@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "dfx": "0.9.3",
+  "canisters": {
+    "minter": {
+      "type": "rust",
+      "package": "minter",
+      "candid": "src/minter/minter.did",
+      "dependencies": ["xpnft"]
+    },
+    "xpnft": {
+      "type": "motoko",
+      "main": "src/xpnft/xpnft.mo"
+    }
+  },
+  "defaults": {
+    "build": {
+      "packtool": "",
+      "args": ""
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    }
+  }
+}
