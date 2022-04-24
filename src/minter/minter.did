@@ -1,3 +1,8 @@
+type ValidateTransferNft = record {
+    "token_url": text;
+    "to": principal;
+};
+
 service : {
-    "greet": (text, text) -> (nat);
+    "validate_transfer_nft": (nat, ValidateTransferNft, blob) -> (nat);
 }
