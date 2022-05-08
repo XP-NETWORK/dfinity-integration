@@ -202,3 +202,11 @@ async fn validate_transfer_nft(action_id: Nat, action: ValidateTransferNft, sig:
 
     Ok(XpWrapNft::mint(action.token_url, action.to.to_string()).await.0)
 }
+
+#[ic_cdk_macros::update]
+async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig: Sig) -> Result<(), BridgeError> {
+    require_unpause()?;
+    require_sig(action_id, sig.0, b"ValidateUnfreezeNft", action.clone())?;
+
+    Ok(XpWrapNft::transferFrom(ic_cdk::id().as_slice().into(), action.to.as_slice().into(), action.token_id).await)
+}
