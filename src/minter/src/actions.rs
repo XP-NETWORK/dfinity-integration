@@ -7,6 +7,12 @@ pub struct ValidateTransferNft {
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct ValidateTransferNftBatch {
+    pub token_urls: Vec<String>,
+    pub to: Principal
+}
+
+#[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateSetPause {
     pub pause: bool
 }
@@ -27,7 +33,11 @@ pub struct ValidateUnfreezeNft {
     pub token_id: Nat
 }
 
-
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct ValidateUnfreezeNftBatch {
+    pub to: Principal,
+    pub token_ids: Vec<Nat>
+}
 
 #[derive(Clone, Debug, CandidType)]
 pub struct BridgeAction<T: CandidType> {

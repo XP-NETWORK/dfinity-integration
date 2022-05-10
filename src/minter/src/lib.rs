@@ -210,3 +210,28 @@ async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig:
 
     Ok(XpWrapNft::transferFrom(ic_cdk::id().as_slice().into(), action.to.as_slice().into(), action.token_id).await)
 }
+
+#[ic_cdk_macros::update]
+async fn validate_transfer_nft_batch(action_id: Nat, action: ValidateTransferNftBatch, sig: Sig) -> Result<(), BridgeError> {
+    require_unpause()?;
+    require_sig(action_id, sig.0, b"ValidateTransferNftBatch", action.clone())?;
+
+    for token_url in action.token_urls {
+        XpWrapNft::mint(token_url, action.to.to_string()).await;
+    }
+
+    Ok(())
+}
+
+#[ic_cdk_macros::update]
+async fn validate_unfreeze_nft_batch(action_id: Nat, action: ValidateUnfreezeNftBatch, sig: Sig) -> Result<(), BridgeError> {
+    require_unpause()?;
+    require_sig(action_id, sig.0, b"ValidateUnfreezeNftBatch", action.clone())?;
+
+    let canister_id = ic_cdk::id().as_slice().to_owned();
+    for token_id in action.token_ids {
+        XpWrapNft::transferFrom(canister_id.clone(), action.to.as_slice().into(), token_id).await
+    }
+
+    Ok(())
+}
