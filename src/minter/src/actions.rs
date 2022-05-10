@@ -3,12 +3,14 @@ use candid::{Deserialize, CandidType, Principal, Nat};
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateTransferNft {
     pub token_url: String,
+    pub mint_with: Principal,
     pub to: Principal
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateTransferNftBatch {
     pub token_urls: Vec<String>,
+    pub mint_with: Vec<Principal>,
     pub to: Principal
 }
 
@@ -30,12 +32,14 @@ pub struct ValidateWithdrawFees {
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateUnfreezeNft {
     pub to: Principal,
+    pub dip_contract: Principal,
     pub token_id: Nat
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateUnfreezeNftBatch {
     pub to: Principal,
+    pub dip_contracts: Vec<Principal>,
     pub token_ids: Vec<Nat>
 }
 

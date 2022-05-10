@@ -5,7 +5,7 @@ use ic_cdk::{
     export::{
         candid::{CandidType, Deserialize, Nat, Encode, types::{Type, Compound}},
         Principal
-    }
+    }, api::call::{CallResult, RejectionCode}
 };
 //use ic_ledger_types::{TransferArgs, Memo};
 use serde_big_array::BigArray;
@@ -13,9 +13,6 @@ use sha2::{Sha512, Digest};
 use ed25519_compact::{PublicKey, Signature};
 use std::{cell::RefCell, thread::LocalKey};
 use std::collections::BTreeSet;
-
-#[ic_cdk_macros::import(canister = "xpnft")]
-struct XpWrapNft;
 
 type ActionIdStore = BTreeSet<Nat>;
 type WhitelistStore = BTreeSet<Principal>;
@@ -64,7 +61,14 @@ pub enum BridgeError {
     DuplicateAction,
     InvalidSignature,
     BridgePaused,
-    FeeTransferFailure
+    FeeTransferFailure,
+    ExternalCall(i32, String)
+}
+
+impl From<(RejectionCode, String)> for BridgeError {
+    fn from(e: (RejectionCode, String)) -> Self {
+        return Self::ExternalCall(e.0 as i32, e.1)
+    }
 }
 
 static mut CONFIG: Option<Config> = None;
@@ -141,6 +145,23 @@ fn require_unpause() -> Result<(), BridgeError> {
     return Ok(());
 }
 
+async fn xpnft_mint(id: Principal, url: String, to: Principal) -> CallResult<(Nat,)> {
+    ic_cdk::call(id, "mint", (url, to.to_string())).await
+}
+
+async fn xpnft_burn(id: Principal, token_id: Nat) -> CallResult<()> {
+    ic_cdk::call(id, "burn", (token_id,)).await
+}
+
+async fn dip721_transfer(id: Principal, from: Principal, to: Principal, token_id: Nat) -> CallResult<()> {
+    ic_cdk::call(id, "transferFrom", 
+    (
+        from.as_slice().to_owned(),
+        to.as_slice().to_owned(),
+        token_id   
+    )).await
+}
+
 #[ic_cdk_macros::init]
 fn init(
     group_key: [u8; 32],
@@ -200,7 +221,7 @@ async fn validate_transfer_nft(action_id: Nat, action: ValidateTransferNft, sig:
     require_unpause()?;
     require_sig(action_id, sig.0, b"ValidateTransferNft", action.clone())?;
 
-    Ok(XpWrapNft::mint(action.token_url, action.to.to_string()).await.0)
+    Ok(xpnft_mint(action.mint_with, action.token_url, action.to).await?.0)
 }
 
 #[ic_cdk_macros::update]
@@ -208,7 +229,7 @@ async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig:
     require_unpause()?;
     require_sig(action_id, sig.0, b"ValidateUnfreezeNft", action.clone())?;
 
-    Ok(XpWrapNft::transferFrom(ic_cdk::id().as_slice().into(), action.to.as_slice().into(), action.token_id).await)
+    Ok(dip721_transfer(action.dip_contract, ic_cdk::id(), action.to, action.token_id).await?)
 }
 
 #[ic_cdk_macros::update]
@@ -216,8 +237,8 @@ async fn validate_transfer_nft_batch(action_id: Nat, action: ValidateTransferNft
     require_unpause()?;
     require_sig(action_id, sig.0, b"ValidateTransferNftBatch", action.clone())?;
 
-    for token_url in action.token_urls {
-        XpWrapNft::mint(token_url, action.to.to_string()).await;
+    for (i, token_url) in action.token_urls.into_iter().enumerate() {
+        xpnft_mint(action.mint_with[i], token_url, action.to).await?;
     }
 
     Ok(())
@@ -228,9 +249,9 @@ async fn validate_unfreeze_nft_batch(action_id: Nat, action: ValidateUnfreezeNft
     require_unpause()?;
     require_sig(action_id, sig.0, b"ValidateUnfreezeNftBatch", action.clone())?;
 
-    let canister_id = ic_cdk::id().as_slice().to_owned();
-    for token_id in action.token_ids {
-        XpWrapNft::transferFrom(canister_id.clone(), action.to.as_slice().into(), token_id).await
+    let canister_id = ic_cdk::id();
+    for (i, token_id) in action.token_ids.into_iter().enumerate() {
+        dip721_transfer(action.dip_contracts[i], canister_id, action.to, token_id).await?;
     }
 
     Ok(())
