@@ -257,6 +257,17 @@ async fn withdraw_fees(action_id: Nat, action: ValidateWithdrawFees, sig: Sig) -
 }
 
 #[ic_cdk_macros::update]
+async fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig: Sig) -> Result<(), BridgeError> {
+    require_unpause()?;
+
+    require_sig_config(action_id, sig.0, b"ValidateWhitelistNft", action.clone())?;
+
+    WHITELIST_STORE.with(|store| store.borrow_mut().insert(action.dip_contract));
+
+    Ok(())
+}
+
+#[ic_cdk_macros::update]
 async fn validate_transfer_nft(action_id: Nat, action: ValidateTransferNft, sig: Sig) -> Result<Nat, BridgeError> {
     require_unpause()?;
     require_sig(action_id, sig.0, b"ValidateTransferNft", action.clone())?;

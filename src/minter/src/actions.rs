@@ -43,6 +43,11 @@ pub struct ValidateUnfreezeNftBatch {
     pub token_ids: Vec<Nat>
 }
 
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct ValidateWhitelistDip721 {
+    pub dip_contract: Principal
+}
+
 #[derive(Clone, Debug, CandidType)]
 pub struct BridgeAction<T: CandidType> {
     pub chain_nonce: u64,
