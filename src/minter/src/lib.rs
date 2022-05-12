@@ -244,32 +244,29 @@ fn init(
 }
 
 #[ic_cdk_macros::update]
-fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) -> Result<(), BridgeError> {
-    require_sig_config(action_id, sig.0, b"ValidateSetPause", action.clone())?;
+fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) {
+    require_sig_config(action_id, sig.0, b"ValidateSetPause", action.clone()).unwrap();
     config_mut().paused = action.pause;
-    Ok(())
 }
 
 #[ic_cdk_macros::update]
-fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) -> Result<(), BridgeError> {
-    require_unpause()?;
-    require_sig_config(action_id, sig.0, b"ValidateSetGroupKey", action.clone())?;
+fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) {
+    require_unpause().unwrap();
+    require_sig_config(action_id, sig.0, b"ValidateSetGroupKey", action.clone()).unwrap();
 
     config_mut().group_key = action.group_key;
-    Ok(())
-
 }
 
 #[ic_cdk_macros::update]
-async fn withdraw_fees(action_id: Nat, action: ValidateWithdrawFees, sig: Sig) -> Result<BlockIndex, BridgeError> {
-    require_unpause()?;
-    require_sig_config(action_id, sig.0, b"ValidateWithdrawFees", action.clone())?;
+async fn withdraw_fees(action_id: Nat, action: ValidateWithdrawFees, sig: Sig) -> BlockIndex {
+    require_unpause().unwrap();
+    require_sig_config(action_id, sig.0, b"ValidateWithdrawFees", action.clone()).unwrap();
 
     let id = ic_cdk::id();
 
     let bal = account_balance(MAINNET_LEDGER_CANISTER_ID, AccountBalanceArgs {
         account: AccountIdentifier::new(&id, &DEFAULT_SUBACCOUNT)
-    }).await?;
+    }).await.unwrap();
 
     let args = TransferArgs {
         memo: Memo(0),
@@ -283,24 +280,22 @@ async fn withdraw_fees(action_id: Nat, action: ValidateWithdrawFees, sig: Sig) -
     ic_ledger_types::transfer(
         MAINNET_LEDGER_CANISTER_ID,
         args
-    ).await?.map_err(|_| BridgeError::FeeTransferFailure)
+    ).await.unwrap().unwrap()
 }
 
 #[ic_cdk_macros::update]
-async fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig: Sig) -> Result<(), BridgeError> {
-    require_unpause()?;
+async fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig: Sig) {
+    require_unpause().unwrap();
 
-    require_sig_config(action_id, sig.0, b"ValidateWhitelistNft", action.clone())?;
+    require_sig_config(action_id, sig.0, b"ValidateWhitelistNft", action.clone()).unwrap();
 
     WHITELIST_STORE.with(|store| store.borrow_mut().insert(action.dip_contract));
-
-    Ok(())
 }
 
 #[ic_cdk_macros::update]
-async fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig) -> Result<(), BridgeError> {
-    require_unpause()?;
-    require_sig_config(action_id, sig.0, b"ValidateCleanLogs", action.clone())?;
+async fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig) {
+    require_unpause().unwrap();
+    require_sig_config(action_id, sig.0, b"ValidateCleanLogs", action.clone()).unwrap();
 
     EVENT_STORE.with(|store| {
         let mut bmap = store.borrow_mut();
@@ -309,60 +304,54 @@ async fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig) -> 
             action.from_action += Nat::from(1u32);
         }
     });
-
-    Ok(())
 }
 
 #[ic_cdk_macros::update]
-async fn validate_transfer_nft(action_id: Nat, action: ValidateTransferNft, sig: Sig) -> Result<Nat, BridgeError> {
-    require_unpause()?;
-    require_sig(action_id, sig.0, b"ValidateTransferNft", action.clone())?;
+async fn validate_transfer_nft(action_id: Nat, action: ValidateTransferNft, sig: Sig) -> Nat {
+    require_unpause().unwrap();
+    require_sig(action_id, sig.0, b"ValidateTransferNft", action.clone()).unwrap();
 
-    Ok(xpnft_mint(action.mint_with, action.token_url, action.to).await?.0)
+    xpnft_mint(action.mint_with, action.token_url, action.to).await.unwrap().0
 }
 
 #[ic_cdk_macros::update]
-async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig: Sig) -> Result<(), BridgeError> {
-    require_unpause()?;
-    require_sig(action_id, sig.0, b"ValidateUnfreezeNft", action.clone())?;
+async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig: Sig) {
+    require_unpause().unwrap();
+    require_sig(action_id, sig.0, b"ValidateUnfreezeNft", action.clone()).unwrap();
 
-    Ok(dip721_transfer(action.dip_contract, ic_cdk::id(), action.to, action.token_id).await?)
+    dip721_transfer(action.dip_contract, ic_cdk::id(), action.to, action.token_id).await.unwrap();
 }
 
 #[ic_cdk_macros::update]
-async fn validate_transfer_nft_batch(action_id: Nat, action: ValidateTransferNftBatch, sig: Sig) -> Result<(), BridgeError> {
-    require_unpause()?;
-    require_sig(action_id, sig.0, b"ValidateTransferNftBatch", action.clone())?;
+async fn validate_transfer_nft_batch(action_id: Nat, action: ValidateTransferNftBatch, sig: Sig) {
+    require_unpause().unwrap();
+    require_sig(action_id, sig.0, b"ValidateTransferNftBatch", action.clone()).unwrap();
 
     for (i, token_url) in action.token_urls.into_iter().enumerate() {
-        xpnft_mint(action.mint_with[i], token_url, action.to).await?;
+        xpnft_mint(action.mint_with[i], token_url, action.to).await.unwrap();
     }
-
-    Ok(())
 }
 
 #[ic_cdk_macros::update]
-async fn validate_unfreeze_nft_batch(action_id: Nat, action: ValidateUnfreezeNftBatch, sig: Sig) -> Result<(), BridgeError> {
-    require_unpause()?;
-    require_sig(action_id, sig.0, b"ValidateUnfreezeNftBatch", action.clone())?;
+async fn validate_unfreeze_nft_batch(action_id: Nat, action: ValidateUnfreezeNftBatch, sig: Sig) {
+    require_unpause().unwrap();
+    require_sig(action_id, sig.0, b"ValidateUnfreezeNftBatch", action.clone()).unwrap();
 
     let canister_id = ic_cdk::id();
     for (i, token_id) in action.token_ids.into_iter().enumerate() {
-        dip721_transfer(action.dip_contracts[i], canister_id, action.to, token_id).await?;
+        dip721_transfer(action.dip_contracts[i], canister_id, action.to, token_id).await.unwrap();
     }
-
-    Ok(())
 }
 
 #[ic_cdk_macros::update]
-async fn freeze_nft(tx_fee_block: BlockIndex, dip721_contract: Principal, token_id: Nat, chain_nonce: u64, to: String, mint_with: String) -> Result<(), BridgeError> {
-    require_unpause()?;
-    require_whitelist(dip721_contract)?;
+async fn freeze_nft(tx_fee_block: BlockIndex, dip721_contract: Principal, token_id: Nat, chain_nonce: u64, to: String, mint_with: String) {
+    require_unpause().unwrap();
+    require_whitelist(dip721_contract).unwrap();
 
-    let fee = require_tx_fee(tx_fee_block).await?;
+    let fee = require_tx_fee(tx_fee_block).await.unwrap();
 
-    dip721_transfer(dip721_contract, ic_cdk::caller(), ic_cdk::id(), token_id.clone()).await?;
-    let url = dip721_token_uri(dip721_contract, token_id.clone()).await?.0.unwrap();
+    dip721_transfer(dip721_contract, ic_cdk::caller(), ic_cdk::id(), token_id.clone()).await.unwrap();
+    let url = dip721_token_uri(dip721_contract, token_id.clone()).await.unwrap().0.unwrap();
 
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
@@ -374,23 +363,21 @@ async fn freeze_nft(tx_fee_block: BlockIndex, dip721_contract: Principal, token_
     });
 
     add_event(ctx, ev);
-
-    Ok(())
 }
 
 #[ic_cdk_macros::update]
-async fn freeze_nft_batch(tx_fee_block: BlockIndex, dip721_contract: Principal, token_ids: Vec<Nat>, chain_nonce: u64, to: String, mint_with: String) -> Result<(), BridgeError> {
-    require_unpause()?;
-    require_whitelist(dip721_contract)?;
+async fn freeze_nft_batch(tx_fee_block: BlockIndex, dip721_contract: Principal, token_ids: Vec<Nat>, chain_nonce: u64, to: String, mint_with: String) {
+    require_unpause().unwrap();
+    require_whitelist(dip721_contract).unwrap();
 
-    let fee = require_tx_fee(tx_fee_block).await?;
+    let fee = require_tx_fee(tx_fee_block).await.unwrap();
 
     let caller = ic_cdk::caller();
     let canister_id = ic_cdk::id();
     let mut urls = Vec::with_capacity(token_ids.len());
     for token_id in token_ids.clone() {
-        urls.push(dip721_token_uri(dip721_contract, token_id.clone()).await?.0.unwrap());
-        dip721_transfer(dip721_contract, caller, canister_id, token_id).await?;
+        urls.push(dip721_token_uri(dip721_contract, token_id.clone()).await.unwrap().0.unwrap());
+        dip721_transfer(dip721_contract, caller, canister_id, token_id).await.unwrap();
     }
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
@@ -402,18 +389,16 @@ async fn freeze_nft_batch(tx_fee_block: BlockIndex, dip721_contract: Principal, 
     });
 
     add_event(ctx, ev);
-
-    Ok(())
 }
 
 #[ic_cdk_macros::update]
-async fn withdraw_nft(tx_fee_block: BlockIndex, burner: Principal, token_id: Nat, chain_nonce: u64, to: String) -> Result<(), BridgeError> {
-    require_unpause()?;
+async fn withdraw_nft(tx_fee_block: BlockIndex, burner: Principal, token_id: Nat, chain_nonce: u64, to: String) {
+    require_unpause().unwrap();
 
-    let fee = require_tx_fee(tx_fee_block).await?;
+    let fee = require_tx_fee(tx_fee_block).await.unwrap();
 
-    let url = dip721_token_uri(burner, token_id.clone()).await?.0.unwrap();
-    xpnft_burn_for(burner, ic_cdk::caller(), token_id.clone()).await?;
+    let url = dip721_token_uri(burner, token_id.clone()).await.unwrap().0.unwrap();
+    xpnft_burn_for(burner, ic_cdk::caller(), token_id.clone()).await.unwrap();
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
     let ev = BridgeEvent::UnfreezeNft(UnfreezeNft {
@@ -423,22 +408,20 @@ async fn withdraw_nft(tx_fee_block: BlockIndex, burner: Principal, token_id: Nat
     });
 
     add_event(ctx, ev);
-
-    Ok(())
 }
 
 #[ic_cdk_macros::update]
-async fn withdraw_nft_batch(tx_fee_block: BlockIndex, burner: Principal, token_ids: Vec<Nat>, chain_nonce: u64, to: String) -> Result<(), BridgeError> {
-    require_unpause()?;
+async fn withdraw_nft_batch(tx_fee_block: BlockIndex, burner: Principal, token_ids: Vec<Nat>, chain_nonce: u64, to: String) {
+    require_unpause().unwrap();
 
-    let fee = require_tx_fee(tx_fee_block).await?;
+    let fee = require_tx_fee(tx_fee_block).await.unwrap();
 
     let caller = ic_cdk::caller();
     let mut urls = Vec::with_capacity(token_ids.len());
 
     for token_id in token_ids.clone() {
-        urls.push(dip721_token_uri(burner, token_id.clone()).await?.0.unwrap());
-        xpnft_burn_for(burner, caller, token_id).await?;
+        urls.push(dip721_token_uri(burner, token_id.clone()).await.unwrap().0.unwrap());
+        xpnft_burn_for(burner, caller, token_id).await.unwrap();
     }
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
@@ -449,6 +432,9 @@ async fn withdraw_nft_batch(tx_fee_block: BlockIndex, burner: Principal, token_i
     });
 
     add_event(ctx, ev);
+}
 
-    Ok(())
+#[ic_cdk_macros::query]
+fn get_event(action_id: Nat) -> Option<(BridgeEventCtx, BridgeEvent)> {
+    EVENT_STORE.with(|store| store.borrow().get(&action_id).cloned())
 }

@@ -1,7 +1,7 @@
 use candid::{Nat, Principal, CandidType};
 
 
-#[derive(CandidType)]
+#[derive(Clone, CandidType)]
 pub struct BridgeEventCtx {
     pub action_id: Nat,
     pub chain_nonce: u64,
@@ -9,7 +9,7 @@ pub struct BridgeEventCtx {
     pub to: String
 }
 
-#[derive(CandidType)]
+#[derive(Clone, CandidType)]
 pub struct TransferNft {
     pub token_id: Nat,
     pub dip721_contract: Principal,
@@ -17,14 +17,14 @@ pub struct TransferNft {
     pub mint_with: String
 }
 
-#[derive(CandidType)]
+#[derive(Clone, CandidType)]
 pub struct UnfreezeNft {
     pub token_id: Nat,
     pub burner: Principal,
     pub uri: String
 }
 
-#[derive(CandidType)]
+#[derive(Clone, CandidType)]
 pub struct TransferNftBatch {
     pub token_ids: Vec<Nat>,
     pub dip721_contract: Principal,
@@ -32,14 +32,14 @@ pub struct TransferNftBatch {
     pub mint_with: String
 }
 
-#[derive(CandidType)]
+#[derive(Clone, CandidType)]
 pub struct UnfreezeNftBatch {
     pub token_ids: Vec<Nat>,
     pub burner: Principal,
     pub uris: Vec<String>
 }
 
-#[derive(CandidType)]
+#[derive(Clone, CandidType)]
 pub enum BridgeEvent {
     TransferNft(TransferNft),
     TransferNftBatch(TransferNftBatch),
