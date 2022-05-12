@@ -8,7 +8,7 @@ import Option "mo:base/Option";
 import P "mo:base/Prelude";
 import Principal "mo:base/Principal";
 
-actor XPNFT {
+actor class XPNFT(owner: Text) {
 	public shared query (doIOwn__msg) func doIOwn(tokenId : Nat) : async Bool {
 		let caller = doIOwn__msg.caller; // First input
 		_ownerOf(tokenId) == ?caller;
@@ -24,6 +24,8 @@ actor XPNFT {
 	private type TokenId = Nat;
 	
 	private stable var tokenPk : Nat = 0;
+
+	private stable var owner_:Principal = Principal.fromText(owner);
 	
 	private stable var tokenURIEntries : [(TokenId, Text)] = [];
 	private stable var ownersEntries : [(TokenId, Principal)] = [];
@@ -126,10 +128,16 @@ actor XPNFT {
 	};
 	
 	public shared(msg) func mint(uri : Text, to: Text) : async Nat {
-
+		assert msg.caller == owner_;
 		tokenPk += 1;
 		_mint(Principal.fromText(to), tokenPk, uri);
 		return tokenPk;
+	};
+
+	public shared(msg) func burn(acc:Principal, tokenId: Nat) : ()  {
+		assert msg.caller == owner_;
+		assert _ownerOf(tokenId) == acc;
+		_burn(tokenId);
 	};
 	
 	
