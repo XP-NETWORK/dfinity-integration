@@ -5,7 +5,7 @@ use candid::{Nat, Principal, CandidType};
 pub struct BridgeEventCtx {
     pub action_id: Nat,
     pub chain_nonce: u64,
-    pub tx_fees: Nat,
+    pub tx_fee: u64,
     pub to: String
 }
 

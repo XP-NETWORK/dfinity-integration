@@ -48,6 +48,12 @@ pub struct ValidateWhitelistDip721 {
     pub dip_contract: Principal
 }
 
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct ValidateCleanLogs {
+    pub from_action: Nat,
+    pub to_action: Nat
+}
+
 #[derive(Clone, Debug, CandidType)]
 pub struct BridgeAction<T: CandidType> {
     pub chain_nonce: u64,
