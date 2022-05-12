@@ -9,7 +9,7 @@ use ic_cdk::{
         Principal
     }, api::call::{CallResult, RejectionCode}
 };
-//use ic_ledger_types::{TransferArgs, Memo};
+use ic_ledger_types::{TransferArgs, Memo, MAINNET_LEDGER_CANISTER_ID, account_balance, AccountBalanceArgs, AccountIdentifier, DEFAULT_SUBACCOUNT, DEFAULT_FEE, BlockIndex};
 use serde_big_array::BigArray;
 use sha2::{Sha512, Digest};
 use ed25519_compact::{PublicKey, Signature};
@@ -235,25 +235,29 @@ fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) -> Resul
 }
 
 #[ic_cdk_macros::update]
-async fn withdraw_fees(action_id: Nat, action: ValidateWithdrawFees, sig: Sig) -> Result<(), BridgeError> {
+async fn withdraw_fees(action_id: Nat, action: ValidateWithdrawFees, sig: Sig) -> Result<BlockIndex, BridgeError> {
     require_unpause()?;
     require_sig_config(action_id, sig.0, b"ValidateWithdrawFees", action.clone())?;
 
-    // TODO
-    // let args = TransferArgs {
-    //     memo: Memo(0),
-    //     amount: Default::default(), // TODO
-    //     fee: Default::default(), // TODO
-    //     from_subaccount: None,
-    //     to: action.to,
-    //     created_at_time: None
-    // };
-    // ic_ledger_types::transfer(
-    //     Default::default(), // TODO
-    //     args
-    // ).await.map_err(|_| BridgeError::FeeTransferFailure)?;
+    let id = ic_cdk::id();
 
-    Ok(())
+    let bal = account_balance(MAINNET_LEDGER_CANISTER_ID, AccountBalanceArgs {
+        account: AccountIdentifier::new(&id, &DEFAULT_SUBACCOUNT)
+    }).await?;
+
+    let args = TransferArgs {
+        memo: Memo(0),
+        amount: bal,
+        fee: DEFAULT_FEE,
+        from_subaccount: None,
+        to: AccountIdentifier::new(&action.to, &DEFAULT_SUBACCOUNT),
+        created_at_time: None
+    };
+
+    ic_ledger_types::transfer(
+        MAINNET_LEDGER_CANISTER_ID,
+        args
+    ).await?.map_err(|_| BridgeError::FeeTransferFailure)
 }
 
 #[ic_cdk_macros::update]
