@@ -21,3 +21,7 @@ serde-big-array = { version = "0.3", features = ["const-generics"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 async-std = { version="1.10.0", features = ["attributes"] }
+
+[dev-dependencies]
+lazy_static = "1.4.0"
+rand = "0.8.5"
