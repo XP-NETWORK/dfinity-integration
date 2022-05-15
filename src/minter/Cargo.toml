@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 candid = "0.7.4"
+ic-kit = "0.4.4"
 ic-cdk = "0.4"
 ic-cdk-macros = "0.4"
 ic-ledger-types = "0.1.0"
@@ -17,3 +18,6 @@ ed25519-compact = { version = "1.0.11", default-features = false }
 sha2 = { version = "0.9", default-features = false }
 serde = "1.0.132"
 serde-big-array = { version = "0.3", features = ["const-generics"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+async-std = { version="1.10.0", features = ["attributes"] }

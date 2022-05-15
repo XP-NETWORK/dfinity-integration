@@ -1,6 +1,6 @@
 use candid::{CandidType, Principal, Deserialize};
-use ic_cdk::api::call::CallResult;
-use ic_ledger_types::{BlockIndex, Timestamp, Memo, AccountIdentifier, Tokens};
+use ic_kit::CallResult;
+use ic_ledger_types::{BlockIndex, Timestamp, Memo, AccountIdentifier, Tokens, TransferArgs, TransferResult, AccountBalanceArgs};
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub enum Operation {
@@ -58,6 +58,16 @@ pub struct QueryBlocksResponse {
 }
 
 pub async fn query_blocks(ledger_canister_id: Principal, args: GetBlockArgs) -> CallResult<QueryBlocksResponse> {
-    let (blocks,) = ic_cdk::call(ledger_canister_id, "query_blocks", (args,)).await?;
+    let (blocks,) = ic_kit::ic::call(ledger_canister_id, "query_blocks", (args,)).await?;
     Ok(blocks)
+}
+
+pub async fn transfer(ledger_canister_id: Principal, args: TransferArgs) -> CallResult<TransferResult> {
+    let (res,) = ic_kit::ic::call(ledger_canister_id, "transfer", (args,)).await?;
+    return Ok(res);
+}
+
+pub async fn account_balance(ledger_canister_id: Principal, args: AccountBalanceArgs) -> CallResult<Tokens> {
+    let (res,) = ic_kit::ic::call(ledger_canister_id, "account_balance", (args,)).await?;
+    Ok(res)
 }
