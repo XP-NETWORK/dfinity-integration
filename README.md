@@ -35,3 +35,13 @@ dfx deploy
 ```
 
 Once the job completes, your application will be available at `http://localhost:8000?canisterId={asset_canister_id}`.
+
+## Tests
+
+### Minter
+
+Make sure to run tests in single thread
+
+```bash
+cargo test --package minter -- --test-threads 1
+```
