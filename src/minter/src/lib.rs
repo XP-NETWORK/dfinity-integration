@@ -17,6 +17,7 @@ use ic_ledger_types::{
     DEFAULT_SUBACCOUNT, MAINNET_LEDGER_CANISTER_ID,
 };
 use ledger::GetBlockArgs;
+use serde::Serialize;
 use serde_big_array::BigArray;
 use sha2::{Digest, Sha512};
 use std::collections::BTreeSet;
@@ -79,6 +80,29 @@ struct Config {
     event_cnt: Nat,
     paused: bool,
     chain_nonce: u64,
+}
+
+#[derive(Clone, Debug, CandidType)]
+struct MintRequest {
+    to: User,
+    metadata: Option<Vec<u8>>,
+}
+#[derive(Clone, Debug, CandidType)]
+struct TransferRequest {
+    to: User,
+    from: User,
+    token: String,
+    balance: u128,
+    memo: Memo,
+    notify: bool,
+    subaccount: Option<Vec<u8>>,
+}
+#[derive(Clone, Debug, CandidType, Deserialize)]
+enum User {
+    #[serde(rename = "address")]
+    Address(String),
+    #[serde(rename = "principal")]
+    Principal(Principal),
 }
 
 #[derive(Debug, CandidType)]
@@ -208,8 +232,16 @@ fn add_event(ctx: BridgeEventCtx, ev: BridgeEvent) -> Nat {
     action_id
 }
 
-async fn xpnft_mint(id: Principal, url: String, to: Principal) -> CallResult<(Nat,)> {
-    ic_kit::ic::call(id, "mintNft", (to.to_string(), url)).await
+async fn xpnft_mint(id: Principal, url: String, to: Principal) -> CallResult<(u32,)> {
+    ic_kit::ic::call(
+        id,
+        "mintNFT",
+        (MintRequest {
+            metadata: Some(url.as_bytes().to_vec()),
+            to: User::Principal(to),
+        },),
+    )
+    .await
 }
 
 async fn xpnft_burn_for(id: Principal, token_id: Nat) -> CallResult<()> {
@@ -244,12 +276,15 @@ async fn dip721_transfer(
         id,
         "transferFrom",
         (
-            from.as_slice().to_owned(),
-            to.as_slice().to_owned(),
-            principal,
-            1,
-            Vec::<u8>::new(),
-            false,
+           TransferRequest{
+            from: User::Principal(from),
+            to: User::Principal(to),
+            token: principal.to_text(),
+            balance: 1,
+            memo: Memo(0),
+            notify: true,
+            subaccount: None
+           },
         ),
     )
     .await
@@ -344,7 +379,7 @@ pub(crate) async fn validate_transfer_nft(
     action_id: Nat,
     action: ValidateTransferNft,
     sig: Sig,
-) -> Nat {
+) -> u32 {
     require_unpause().unwrap();
     require_sig(action_id, sig.0, b"ValidateTransferNft", action.clone()).unwrap();
 

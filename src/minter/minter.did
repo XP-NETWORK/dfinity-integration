@@ -1,8 +1,21 @@
 type ValidateTransferNft = record {
     "token_url": text;
+    "mint_with": principal;
     "to": principal;
 };
 
-service : {
-    "validate_transfer_nft": (nat, ValidateTransferNft, blob) -> (nat);
-}
+type ValidateUnfreezeNft = record {
+    "to": principal;
+    "dip_contract": principal;
+    "token_id": nat
+};
+
+type Minter = 
+    service {
+        "validate_transfer_nft": (nat, ValidateTransferNft) -> (nat32);
+        "validate_unfreeze_nft": (nat, ValidateUnfreezeNft, blob) -> ();
+        "freeze_nft": (nat, principal, nat, nat64, text, text) -> (nat);
+        "withdraw_nft": (nat64, principal, nat, nat64, text) -> (nat)
+    };
+
+service : (vec nat8, nat64) -> Minter
