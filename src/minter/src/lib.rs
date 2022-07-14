@@ -217,7 +217,12 @@ async fn xpnft_burn_for(id: Principal, for_acc: Principal, token_id: Nat) -> Cal
 }
 
 async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<String>,)> {
-    let tid = vec!["\x0Atid".as_bytes(), id.to_text().as_bytes(), &token_id.0.to_bytes_be() ].concat();
+    let tid = vec![
+        "\x0Atid".as_bytes(),
+        id.to_text().as_bytes(),
+        &token_id.0.to_bytes_be(),
+    ]
+    .concat();
     let principal = Principal::from_slice(&tid);
     ic_kit::ic::call(id, "metadata", (principal,)).await
 }
@@ -228,7 +233,12 @@ async fn dip721_transfer(
     to: Principal,
     token_id: Nat,
 ) -> CallResult<()> {
-    let tid = vec!["\x0Atid".as_bytes(), id.to_text().as_bytes(), &token_id.0.to_bytes_be() ].concat();
+    let tid = vec![
+        "\x0Atid".as_bytes(),
+        id.to_text().as_bytes(),
+        &token_id.0.to_bytes_be(),
+    ]
+    .concat();
     let principal = Principal::from_slice(&tid);
     ic_kit::ic::call(
         id,
@@ -239,9 +249,10 @@ async fn dip721_transfer(
             principal,
             1,
             Vec::<u8>::new(),
-            false
+            false,
         ),
-    ).await
+    )
+    .await
 }
 
 #[ic_kit::macros::init]

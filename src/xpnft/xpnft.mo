@@ -18,7 +18,7 @@ import ExtCommon "./motoko/ext/Common";
 import ExtCore "./motoko/ext/Core";
 import ExtNonFungible "./motoko/ext/NonFungible";
 
-shared (install) actor class XPNFT(init_minter: Principal) = this {
+shared (install) actor class XPNFT(init_minter: Text) = this {
   
   // Types
   type AccountIdentifier = ExtCore.AccountIdentifier;
@@ -51,7 +51,7 @@ shared (install) actor class XPNFT(init_minter: Principal) = this {
   private var _tokenMetadata : HashMap.HashMap<TokenIndex, Metadata> = HashMap.fromIter(_tokenMetadataState.vals(), 0, ExtCore.TokenIndex.equal, ExtCore.TokenIndex.hash);
   
   private stable var _supply : Balance  = 0;
-  private stable var _minter : Principal  = init_minter;
+  private stable var _minter : Principal  = Principal.fromText(init_minter);
   private stable var _nextTokenId : TokenIndex  = 0;
 
 
