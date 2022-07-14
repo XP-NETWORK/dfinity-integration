@@ -36,7 +36,7 @@ shared (install) actor class XPNFT(init_minter: Text) = this {
   type AllowanceRequest = ExtAllowance.AllowanceRequest;
   type ApproveRequest = ExtAllowance.ApproveRequest;
   type Metadata = ExtCommon.Metadata;
-  type MintRequest  = ExtNonFungible.MintRequest ;
+  type MintRequest  = ExtNonFungible.MintRequest;
   
   private let EXTENSIONS : [Extension] = ["@ext/common", "@ext/allowance", "@ext/nonfungible"];
   
@@ -83,6 +83,14 @@ shared (install) actor class XPNFT(init_minter: Text) = this {
 		_tokenMetadata.put(token, md);
 		_supply := _supply + 1;
 		_nextTokenId := _nextTokenId + 1;
+    token;
+	};
+
+  public shared(msg) func burnNFT(token: Nat32) : async TokenIndex {
+		assert(msg.caller == _minter);
+		_registry.delete(token);
+		_tokenMetadata.delete(token);
+		_supply := _supply - 1;
     token;
 	};
   

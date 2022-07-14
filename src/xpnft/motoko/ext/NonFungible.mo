@@ -2,6 +2,7 @@
 
  */
 import Result "mo:base/Result";
+
 import ExtCore "./Core";
 module ExtNonFungible = {
   public type MintRequest = {
@@ -12,5 +13,6 @@ module ExtNonFungible = {
     bearer: query (token : ExtCore.TokenIdentifier) -> async Result.Result<ExtCore.AccountIdentifier, ExtCore.CommonError>;
 
     mintNFT: shared (request : MintRequest) -> async ();
+    burnNFT: shared (token : Nat32) -> async ()
   };
 };

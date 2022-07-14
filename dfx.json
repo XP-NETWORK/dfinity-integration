@@ -9,8 +9,7 @@
     "minter": {
       "type": "rust",
       "package": "minter",
-      "candid": "src/minter/minter.did",
-      "dependencies": ["xpnft"]
+      "candid": "src/minter/minter.did"
     }
   },
   "defaults": {

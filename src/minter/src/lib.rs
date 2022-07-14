@@ -212,8 +212,8 @@ async fn xpnft_mint(id: Principal, url: String, to: Principal) -> CallResult<(Na
     ic_kit::ic::call(id, "mintNft", (to.to_string(), url)).await
 }
 
-async fn xpnft_burn_for(id: Principal, for_acc: Principal, token_id: Nat) -> CallResult<()> {
-    ic_kit::ic::call(id, "burn", (for_acc, token_id)).await
+async fn xpnft_burn_for(id: Principal, token_id: Nat) -> CallResult<()> {
+    ic_kit::ic::call(id, "burnNFT", (token_id,)).await
 }
 
 async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<String>,)> {
@@ -517,9 +517,7 @@ pub(crate) async fn withdraw_nft(
         .unwrap()
         .0
         .unwrap();
-    xpnft_burn_for(burner, caller, token_id.clone())
-        .await
-        .unwrap();
+    xpnft_burn_for(burner, token_id.clone()).await.unwrap();
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
     let ev = BridgeEvent::UnfreezeNft(UnfreezeNft {
@@ -557,7 +555,7 @@ pub(crate) async fn withdraw_nft_batch(
                 .0
                 .unwrap(),
         );
-        xpnft_burn_for(burner, caller, token_id).await.unwrap();
+        xpnft_burn_for(burner, token_id).await.unwrap();
     }
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
