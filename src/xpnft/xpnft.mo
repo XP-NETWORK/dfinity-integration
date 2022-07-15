@@ -7,6 +7,7 @@ ERC721 - note the following:
 -No transferFrom (as transfer includes a from field)
 */
 import Cycles "mo:base/ExperimentalCycles";
+import Debug "mo:base/Debug";
 import HashMap "mo:base/HashMap";
 import Iter "mo:base/Iter";
 import Principal "mo:base/Principal";

@@ -1,8 +1,11 @@
 mod actions;
 mod events;
 mod ledger;
+mod types;
 use actions::*;
 use events::*;
+use types::ext_types::*;
+use types::motoko_types::*;
 
 use ed25519_compact::{PublicKey, Signature};
 use ic_kit::{
@@ -16,8 +19,8 @@ use ic_ledger_types::{
     AccountBalanceArgs, AccountIdentifier, BlockIndex, Memo, TransferArgs, DEFAULT_FEE,
     DEFAULT_SUBACCOUNT, MAINNET_LEDGER_CANISTER_ID,
 };
+
 use ledger::GetBlockArgs;
-use serde::Serialize;
 use serde_big_array::BigArray;
 use sha2::{Digest, Sha512};
 use std::collections::BTreeSet;
@@ -73,36 +76,12 @@ impl BridgeEventCtx {
         }
     }
 }
-
-#[derive(Clone, Debug, CandidType)]
+#[derive(Clone, Debug, CandidType, Deserialize)]
 struct Config {
     group_key: [u8; 32],
     event_cnt: Nat,
     paused: bool,
     chain_nonce: u64,
-}
-
-#[derive(Clone, Debug, CandidType)]
-struct MintRequest {
-    to: User,
-    metadata: Option<Vec<u8>>,
-}
-#[derive(Clone, Debug, CandidType)]
-struct TransferRequest {
-    to: User,
-    from: User,
-    token: String,
-    balance: u128,
-    memo: Memo,
-    notify: bool,
-    subaccount: Option<Vec<u8>>,
-}
-#[derive(Clone, Debug, CandidType, Deserialize)]
-enum User {
-    #[serde(rename = "address")]
-    Address(String),
-    #[serde(rename = "principal")]
-    Principal(Principal),
 }
 
 #[derive(Debug, CandidType)]
@@ -251,12 +230,25 @@ async fn xpnft_burn_for(id: Principal, token_id: Nat) -> CallResult<()> {
 async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<String>,)> {
     let tid = vec![
         "\x0Atid".as_bytes(),
-        id.to_text().as_bytes(),
-        &token_id.0.to_bytes_be(),
+        id.as_slice(),
+        &token_id.0.to_bytes_le(),
     ]
     .concat();
-    let principal = Principal::from_slice(&tid);
-    ic_kit::ic::call(id, "metadata", (principal,)).await
+    let principal = Principal::from_slice(tid.as_slice());
+
+    let result: (MotokoResult<Metadata, CommonError>,) =
+        ic_kit::ic::call(id, "metadata", (principal.to_text(),))
+            .await
+            .unwrap();
+    if let MotokoResult::Ok(metadata) = result.0 {
+        if let Metadata::NonFungible { metadata } = metadata {
+            return Ok((metadata.map(|m| {
+                let url = String::from_utf8(m).unwrap();
+                url
+            }),));
+        }
+    }
+    return Ok((None,));
 }
 
 async fn dip721_transfer(
@@ -267,27 +259,27 @@ async fn dip721_transfer(
 ) -> CallResult<()> {
     let tid = vec![
         "\x0Atid".as_bytes(),
-        id.to_text().as_bytes(),
-        &token_id.0.to_bytes_be(),
+        id.as_slice(),
+        &token_id.0.to_bytes_le(),
     ]
     .concat();
-    let principal = Principal::from_slice(&tid);
-    ic_kit::ic::call(
+    let principal = Principal::from_slice(tid.as_slice());
+    let _result: (MotokoResult<Nat, TransferResponseErrors>,) = ic_kit::ic::call(
         id,
-        "transferFrom",
-        (
-           TransferRequest{
+        "transfer",
+        (TransferRequest {
             from: User::Principal(from),
             to: User::Principal(to),
-            token: principal.to_text(),
-            balance: 1,
-            memo: Memo(0),
+            token: principal.to_string(),
+            amount: Nat::from(1),
+            memo: vec![],
             notify: true,
-            subaccount: None
-           },
-        ),
+            subaccount: Option::None,
+        },),
     )
     .await
+    .unwrap();
+    Ok(())
 }
 
 #[ic_kit::macros::init]
@@ -474,7 +466,7 @@ pub(crate) async fn freeze_nft(
         .await
         .unwrap()
         .0
-        .unwrap();
+        .unwrap_or_default();
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
     let ev = BridgeEvent::TransferNft(TransferNft {

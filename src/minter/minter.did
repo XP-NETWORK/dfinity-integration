@@ -14,7 +14,7 @@ type Minter =
     service {
         "validate_transfer_nft": (nat, ValidateTransferNft) -> (nat32);
         "validate_unfreeze_nft": (nat, ValidateUnfreezeNft, blob) -> ();
-        "freeze_nft": (nat, principal, nat, nat64, text, text) -> (nat);
+        "freeze_nft": (nat64, principal, nat, nat64, text, text) -> (nat);
         "withdraw_nft": (nat64, principal, nat, nat64, text) -> (nat)
     };
 
