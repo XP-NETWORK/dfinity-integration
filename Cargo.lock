@@ -858,6 +858,8 @@ dependencies = [
  "ic-kit",
  "ic-ledger-types",
  "lazy_static",
+ "num-bigint",
+ "num-traits",
  "rand",
  "serde",
  "serde-big-array",

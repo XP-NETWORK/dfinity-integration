@@ -18,7 +18,8 @@ ed25519-compact = { version = "1.0.11", default-features = false }
 sha2 = { version = "0.9", default-features = false }
 serde = "1.0.132"
 serde-big-array = { version = "0.3", features = ["const-generics"] }
-
+num-bigint = "*"
+num-traits = "*"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 async-std = { version="1.10.0", features = ["attributes"] }
