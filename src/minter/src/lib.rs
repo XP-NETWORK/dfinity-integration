@@ -240,7 +240,6 @@ async fn xpnft_burn_for(id: Principal, token_id: Nat) -> CallResult<()> {
 /// It makes an external call to get the metadata of nft (ext standard) to the given contract.
 async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<String>,)> {
     let principal = token_id_to_principal(token_id.0, id);
-
     let result: (MotokoResult<Metadata, CommonError>,) =
         ic_kit::ic::call(id, "metadata", (principal.to_text(),))
             .await

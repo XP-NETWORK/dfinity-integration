@@ -29,11 +29,11 @@ fn rand_actid() -> u64 {
 }
 
 fn xpnft_mock() -> Canister {
-    let metadata: (MotokoResult<Metadata, CommonError>,) =
-        (MotokoResult::Ok(Metadata::NonFungible {
-            metadata: Some(NFT_URL.as_bytes().to_vec()),
-        }),);
+    let metadata: MotokoResult<Metadata, CommonError> = MotokoResult::Ok(Metadata::NonFungible {
+        metadata: Some(NFT_URL.as_bytes().to_vec()),
+    });
     let transfer: MotokoResult<Nat, TransferResponseErrors> = MotokoResult::Ok(Nat::from(0));
+    let principal = token_id_to_principal(TOKEN_ID.0.clone(), XPNFT_ID.clone()).to_text();
     return Canister::new(XPNFT_ID.clone())
         .method(
             "mintNFT",
@@ -58,7 +58,7 @@ fn xpnft_mock() -> Canister {
             "metadata",
             Box::new(
                 Method::new()
-                    .expect_arguments((TOKEN_ID.clone(),))
+                    .expect_arguments((principal,))
                     .response(metadata),
             ),
         )
@@ -329,17 +329,6 @@ async fn freeze_nft_batch_test() {
     .await;
 
     let (evctx, ev) = get_event(eid.clone()).unwrap();
-
-    println!(
-        "{:#?} {:#?}",
-        evctx,
-        BridgeEventCtx {
-            action_id: eid.clone(),
-            chain_nonce: TARGET_NONCE,
-            tx_fee: TX_FEE_BAL,
-            to: TARGET_ACC.into()
-        }
-    );
 
     assert_eq!(
         evctx,
