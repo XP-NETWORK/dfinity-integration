@@ -1,9 +1,9 @@
-use crate::ledger::{QueryBlocksResponse, Block, Transaction, Operation};
+use crate::ledger::{Block, Operation, QueryBlocksResponse, Transaction};
 
 use super::*;
 use ed25519_compact::{KeyPair, Seed};
-use ic_kit::{mock_principals, MockContext, Canister, Method, async_test};
-use ic_ledger_types::{Tokens, Timestamp, TransferResult};
+use ic_kit::{async_test, mock_principals, Canister, Method, MockContext};
+use ic_ledger_types::{Timestamp, Tokens, TransferResult};
 use lazy_static::lazy_static;
 use rand::Rng;
 
@@ -29,75 +29,93 @@ fn rand_actid() -> u64 {
 }
 
 fn xpnft_mock() -> Canister {
+    let metadata: (MotokoResult<Metadata, CommonError>,) =
+        (MotokoResult::Ok(Metadata::NonFungible {
+            metadata: Some(NFT_URL.as_bytes().to_vec()),
+        }),);
     return Canister::new(XPNFT_ID.clone())
-        .method("mint", Box::new(
-            Method::new()
-            .expect_arguments((NFT_URL, CALLER.to_string()))
-            .response(TOKEN_ID.clone())
-        )).method("burn", Box::new(
-            Method::new()
-            .expect_arguments((CALLER.clone(), TOKEN_ID.clone()))
-            .response(())
-        )).method("tokenURI", Box::new(
-            Method::new()
-            .expect_arguments((TOKEN_ID.clone(),))
-            .response(Some(NFT_URL))
-        )).method("transferFrom", Box::new(
-            Method::new()
-            .response(())
-        ));
+        .method(
+            "mintNFT",
+            Box::new(
+                Method::new()
+                    .expect_arguments((MintRequest {
+                        metadata: Some(NFT_URL.as_bytes().to_vec()),
+                        to: User::Principal(*CALLER),
+                    },))
+                    .response(0u32),
+            ),
+        )
+        .method(
+            "burnNFT",
+            Box::new(
+                Method::new()
+                    .expect_arguments((TOKEN_ID.clone(),))
+                    .response(()),
+            ),
+        )
+        .method(
+            "metadata",
+            Box::new(
+                Method::new()
+                    .expect_arguments((TOKEN_ID.clone(),))
+                    .response(metadata),
+            ),
+        )
+        .method("transfer", Box::new(Method::new().response(())));
 }
 
 fn ledger_mock(bal_id: Principal, bal: Tokens) -> Canister {
     Canister::new(MAINNET_LEDGER_CANISTER_ID)
-        .method("account_balance", Box::new(
-            Method::new()
-            .expect_arguments((AccountBalanceArgs {
-                account: AccountIdentifier::new(&bal_id, &DEFAULT_SUBACCOUNT)
-            },))
-            .response(bal)
-        ))
-        .method("transfer", Box::new(
-            Method::new()
-            .response::<TransferResult>(Ok(BLOCK_INDEX_TXFEE))
-        ))
-        .method("query_blocks", Box::new(
-            Method::new()
-            .expect_arguments((GetBlockArgs {
-                start: BLOCK_INDEX_TXFEE,
-                length: 1
-            },))
-            .response(QueryBlocksResponse {
-                chain_length: 1,
-                certificate: None,
-                blocks: vec![Block {
-                    parent_hash: None,
-                    transaction: Transaction {
-                        memo: Memo(0),
-                        operation: Some(Operation::Transfer {
-                                from: AccountIdentifier::new(&CALLER, &DEFAULT_SUBACCOUNT),
-                                to: AccountIdentifier::new(&CANISTER_ID, &DEFAULT_SUBACCOUNT),
-                                amount: bal,
-                                fee: DEFAULT_FEE
-                        }),
-                        created_at_time: Timestamp {
-                            timestamp_nanos: 0
-                        }
-                    },
-                    timestamp: Timestamp {
-                        timestamp_nanos: 0
-                    }
-                }],
-                first_block_index: BLOCK_INDEX_TXFEE,
-                archived_blocks: vec![]
-            })
-        ))
+        .method(
+            "account_balance",
+            Box::new(
+                Method::new()
+                    .expect_arguments((AccountBalanceArgs {
+                        account: AccountIdentifier::new(&bal_id, &DEFAULT_SUBACCOUNT),
+                    },))
+                    .response(bal),
+            ),
+        )
+        .method(
+            "transfer",
+            Box::new(Method::new().response::<TransferResult>(Ok(BLOCK_INDEX_TXFEE))),
+        )
+        .method(
+            "query_blocks",
+            Box::new(
+                Method::new()
+                    .expect_arguments((GetBlockArgs {
+                        start: BLOCK_INDEX_TXFEE,
+                        length: 1,
+                    },))
+                    .response(QueryBlocksResponse {
+                        chain_length: 1,
+                        certificate: None,
+                        blocks: vec![Block {
+                            parent_hash: None,
+                            transaction: Transaction {
+                                memo: Memo(0),
+                                operation: Some(Operation::Transfer {
+                                    from: AccountIdentifier::new(&CALLER, &DEFAULT_SUBACCOUNT),
+                                    to: AccountIdentifier::new(&CANISTER_ID, &DEFAULT_SUBACCOUNT),
+                                    amount: bal,
+                                    fee: DEFAULT_FEE,
+                                }),
+                                created_at_time: Timestamp { timestamp_nanos: 0 },
+                            },
+                            timestamp: Timestamp { timestamp_nanos: 0 },
+                        }],
+                        first_block_index: BLOCK_INDEX_TXFEE,
+                        archived_blocks: vec![],
+                    }),
+            ),
+        )
 }
 
 fn whitelist_xpnft() {
     let action_id = Nat::from(rand_actid());
     let act = ValidateWhitelistDip721 {
-        dip_contract: XPNFT_ID.clone()
+        dip_contract: XPNFT_ID.clone(),
     };
     let sig = sign_action(action_id.clone(), b"ValidateWhitelistNft", act.clone());
     add_whitelist(action_id, act, sig);
@@ -113,11 +131,11 @@ fn user_ctx_ledger() -> Canister {
 
 fn init_context(ledger: Canister) -> &'static mut MockContext {
     let ctx = MockContext::new()
-    .with_id(CANISTER_ID.clone())
-    .with_caller(CALLER.clone())
-    .with_handler(xpnft_mock())
-    .with_handler(ledger)
-    .inject();
+        .with_id(CANISTER_ID.clone())
+        .with_caller(CALLER.clone())
+        .with_handler(xpnft_mock())
+        .with_handler(ledger)
+        .inject();
 
     init(*KP.pk, CHAIN_NONCE);
 
@@ -150,9 +168,7 @@ fn pause() {
     init_context_validator();
 
     let action_id = Nat::from(rand_actid());
-    let act = ValidateSetPause {
-        pause: true
-    };
+    let act = ValidateSetPause { pause: true };
     let sig = sign_action(action_id.clone(), b"ValidateSetPause", act.clone());
     set_pause(action_id, act, sig);
 
@@ -160,9 +176,7 @@ fn pause() {
     assert!(conf.paused);
 
     let action_id = Nat::from(rand_actid());
-    let act = ValidateSetPause {
-        pause: false
-    };
+    let act = ValidateSetPause { pause: false };
     let sig = sign_action(action_id.clone(), b"ValidateSetPause", act.clone());
     set_pause(action_id, act, sig);
 
@@ -177,7 +191,7 @@ fn set_gk() {
     let new_kp = KeyPair::from_seed(Seed::from([2; 32]));
     let action_id = Nat::from(rand_actid());
     let act = ValidateSetGroupKey {
-        group_key: *new_kp.pk
+        group_key: *new_kp.pk,
     };
     let sig = sign_action(action_id.clone(), b"ValidateSetGroupKey", act.clone());
     set_group_key(action_id, act, sig);
@@ -191,9 +205,7 @@ async fn withdraw_fee_test() {
     init_context_validator();
 
     let action_id = Nat::from(rand_actid());
-    let act = ValidateWithdrawFees {
-        to: CALLER.clone()
-    };
+    let act = ValidateWithdrawFees { to: CALLER.clone() };
     let sig = sign_action(action_id.clone(), b"ValidateWithdrawFees", act.clone());
     let res = withdraw_fees(action_id, act, sig).await;
 
@@ -216,18 +228,10 @@ async fn validate_transfer_nft_test() {
     let act = ValidateTransferNft {
         mint_with: XPNFT_ID.clone(),
         token_url: NFT_URL.into(),
-        to: *CALLER
+        to: *CALLER,
     };
-    let sig = sign_action(
-        aid.clone(),
-        b"ValidateTransferNft",
-        act.clone()
-    );
-    let tid = validate_transfer_nft(
-        aid,
-        act,
-        sig
-    ).await;
+    let sig = sign_action(aid.clone(), b"ValidateTransferNft", act.clone());
+    let tid = validate_transfer_nft(aid, act, sig).await;
     assert_eq!(tid, *TOKEN_ID);
 }
 
@@ -239,18 +243,10 @@ async fn validate_unfreeze_nft_test() {
     let act = ValidateUnfreezeNft {
         to: *CALLER,
         dip_contract: *XPNFT_ID,
-        token_id: TOKEN_ID.clone()
+        token_id: TOKEN_ID.clone(),
     };
-    let sig = sign_action(
-        aid.clone(),
-        b"ValidateUnfreezeNft",
-        act.clone()
-    );
-    validate_unfreeze_nft(
-        aid,
-        act,
-        sig
-    ).await;
+    let sig = sign_action(aid.clone(), b"ValidateUnfreezeNft", act.clone());
+    validate_unfreeze_nft(aid, act, sig).await;
 }
 
 #[async_test]
@@ -261,18 +257,10 @@ async fn validate_transfer_nft_batch_test() {
     let act = ValidateTransferNftBatch {
         token_urls: vec![NFT_URL.to_string(), NFT_URL.to_string()],
         mint_with: vec![*XPNFT_ID, *XPNFT_ID],
-        to: *CALLER
+        to: *CALLER,
     };
-    let sig = sign_action(
-        aid.clone(),
-        b"ValidateTransferNftBatch",
-        act.clone()
-    );
-    validate_transfer_nft_batch(
-        aid,
-        act,
-        sig
-    ).await;
+    let sig = sign_action(aid.clone(), b"ValidateTransferNftBatch", act.clone());
+    validate_transfer_nft_batch(aid, act, sig).await;
 }
 
 #[async_test]
@@ -283,19 +271,11 @@ async fn validate_unfreeze_nft_batch_test() {
     let act = ValidateUnfreezeNftBatch {
         to: *CALLER,
         dip_contracts: vec![*XPNFT_ID, *XPNFT_ID],
-        token_ids: vec![TOKEN_ID.clone(), TOKEN_ID.clone()]
+        token_ids: vec![TOKEN_ID.clone(), TOKEN_ID.clone()],
     };
-    let sig = sign_action(
-        aid.clone(),
-        b"ValidateUnfreezeNftBatch",
-        act.clone()
-    );
+    let sig = sign_action(aid.clone(), b"ValidateUnfreezeNftBatch", act.clone());
 
-    validate_unfreeze_nft_batch(
-        aid,
-        act,
-        sig
-    ).await;
+    validate_unfreeze_nft_batch(aid, act, sig).await;
 }
 
 #[async_test]
@@ -308,8 +288,9 @@ async fn freeze_nft_test() {
         TOKEN_ID.clone(),
         TARGET_NONCE,
         TARGET_ACC.into(),
-        TARGET_MW.into() 
-    ).await;
+        TARGET_MW.into(),
+    )
+    .await;
 
     let (evctx, ev) = get_event(eid.clone()).unwrap();
     assert_eq!(
@@ -342,10 +323,22 @@ async fn freeze_nft_batch_test() {
         vec![TOKEN_ID.clone(), TOKEN_ID.clone()],
         TARGET_NONCE,
         TARGET_ACC.into(),
-        TARGET_MW.into()
-    ).await;
+        TARGET_MW.into(),
+    )
+    .await;
 
     let (evctx, ev) = get_event(eid.clone()).unwrap();
+
+    println!(
+        "{:?} {:?}",
+        evctx,
+        BridgeEventCtx {
+            action_id: eid.clone(),
+            chain_nonce: TARGET_NONCE,
+            tx_fee: TX_FEE_BAL,
+            to: TARGET_ACC.into()
+        }
+    );
 
     assert_eq!(
         evctx,
@@ -377,8 +370,9 @@ async fn withdraw_nft_test() {
         *XPNFT_ID,
         TOKEN_ID.clone(),
         TARGET_NONCE,
-        TARGET_ACC.into()
-    ).await;
+        TARGET_ACC.into(),
+    )
+    .await;
 
     let (evctx, ev) = get_event(eid.clone()).unwrap();
 
@@ -411,8 +405,9 @@ async fn withdraw_nft_batch_test() {
         *XPNFT_ID,
         vec![TOKEN_ID.clone(), TOKEN_ID.clone()],
         TARGET_NONCE,
-        TARGET_ACC.into()
-    ).await;
+        TARGET_ACC.into(),
+    )
+    .await;
 
     let (evctx, ev) = get_event(eid.clone()).unwrap();
 
