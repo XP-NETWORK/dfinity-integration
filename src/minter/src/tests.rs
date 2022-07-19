@@ -33,6 +33,7 @@ fn xpnft_mock() -> Canister {
         (MotokoResult::Ok(Metadata::NonFungible {
             metadata: Some(NFT_URL.as_bytes().to_vec()),
         }),);
+    let transfer: MotokoResult<Nat, TransferResponseErrors> = MotokoResult::Ok(Nat::from(0));
     return Canister::new(XPNFT_ID.clone())
         .method(
             "mintNFT",
@@ -61,7 +62,7 @@ fn xpnft_mock() -> Canister {
                     .response(metadata),
             ),
         )
-        .method("transfer", Box::new(Method::new().response(())));
+        .method("transfer", Box::new(Method::new().response(transfer)));
 }
 
 fn ledger_mock(bal_id: Principal, bal: Tokens) -> Canister {
@@ -330,7 +331,7 @@ async fn freeze_nft_batch_test() {
     let (evctx, ev) = get_event(eid.clone()).unwrap();
 
     println!(
-        "{:?} {:?}",
+        "{:#?} {:#?}",
         evctx,
         BridgeEventCtx {
             action_id: eid.clone(),
