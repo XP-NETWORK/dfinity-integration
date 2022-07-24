@@ -282,13 +282,18 @@ async fn dip721_transfer(
 }
 /// This is the function that is called when the bridge is initialized/contract is deployed.
 #[ic_kit::macros::init]
-pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64) {
+pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Option<Vec<Principal>>) {
     unsafe {
         CONFIG = Some(Config {
             group_key,
             chain_nonce,
             paused: false,
             event_cnt: Nat::from(0),
+        });
+    }
+    if let Some(contracts) = whitelist {
+        contracts.iter().for_each(|contract| {
+            WHITELIST_STORE.with(|store| store.borrow_mut().insert(contract.clone()));
         });
     }
 }
@@ -375,12 +380,15 @@ pub(crate) async fn validate_transfer_nft(
     sig: Sig,
 ) -> u32 {
     require_unpause().unwrap();
+    ic_cdk::println!("Not Paused");
     require_sig(action_id, sig.0, b"ValidateTransferNft", action.clone()).unwrap();
-
-    xpnft_mint(action.mint_with, action.token_url, action.to)
+    ic_cdk::println!("Sig Verified");
+    let mint = xpnft_mint(action.mint_with, action.token_url, action.to)
         .await
         .unwrap()
-        .0
+        .0;
+    ic_cdk::println!("Minted {mint}");
+    mint
 }
 // This is the function that will be called by a validator to transfer an nft that is owned by this smart contract to the given address.
 #[ic_kit::macros::update]

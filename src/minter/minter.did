@@ -18,4 +18,4 @@ type Minter =
         "withdraw_nft": (nat64, principal, nat, nat64, text) -> (nat)
     };
 
-service : (vec nat8, nat64) -> Minter
+service : (vec nat8, nat64, opt vec principal) -> Minter

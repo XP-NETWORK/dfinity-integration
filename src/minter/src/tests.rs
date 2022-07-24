@@ -138,7 +138,7 @@ fn init_context(ledger: Canister) -> &'static mut MockContext {
         .with_handler(ledger)
         .inject();
 
-    init(*KP.pk, CHAIN_NONCE);
+    init(*KP.pk, CHAIN_NONCE, None);
 
     ctx
 }
