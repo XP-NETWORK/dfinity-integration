@@ -6,6 +6,10 @@
       "type": "motoko",
       "main": "src/xpnft/xpnft.mo"
     },
+    "umt": {
+      "type": "motoko",
+      "main": "src/umt/umt.mo"
+    },
     "minter": {
       "type": "rust",
       "package": "minter",
