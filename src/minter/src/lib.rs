@@ -3,7 +3,10 @@ mod events;
 mod ledger;
 mod types;
 use actions::*;
+use candid::candid_method;
+use candid::export_service;
 use events::*;
+use ic_cdk_macros::query;
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 use types::ext_types::*;
@@ -282,6 +285,7 @@ async fn dip721_transfer(
 }
 /// This is the function that is called when the bridge is initialized/contract is deployed.
 #[ic_kit::macros::init]
+#[candid_method(init)]
 pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Option<Vec<Principal>>) {
     unsafe {
         CONFIG = Some(Config {
@@ -299,6 +303,7 @@ pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Option<Vec<
 }
 /// This is the function that can be used to toggle the bridge's pause state.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) {
     require_sig_config(action_id, sig.0, b"ValidateSetPause", action.clone()).unwrap();
     config_mut().paused = action.pause;
@@ -306,6 +311,7 @@ pub(crate) fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) {
 
 /// This is the function that can be used to set the bridge's group key.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) {
     require_unpause().unwrap();
     require_sig_config(action_id, sig.0, b"ValidateSetGroupKey", action.clone()).unwrap();
@@ -314,6 +320,7 @@ pub(crate) fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Si
 }
 /// This is the function that can be used to withdraw the fees from the minter smart contract.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn withdraw_fees(
     action_id: Nat,
     action: ValidateWithdrawFees,
@@ -350,6 +357,7 @@ pub(crate) async fn withdraw_fees(
 
 /// This is the function that can be used to whitelist a smart contract so that it can be used for transfer.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig: Sig) {
     require_unpause().unwrap();
 
@@ -360,6 +368,7 @@ pub(crate) fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig
 
 /// This is the function that can be used to clean the event store of the contract.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig) {
     require_unpause().unwrap();
     require_sig_config(action_id, sig.0, b"ValidateCleanLogs", action.clone()).unwrap();
@@ -374,6 +383,7 @@ pub(crate) fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig
 }
 // This is the function that will be called by a validator to mint a new nft which acts as a pointer to the original NFT on some other chain.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn validate_transfer_nft(
     action_id: Nat,
     action: ValidateTransferNft,
@@ -392,6 +402,7 @@ pub(crate) async fn validate_transfer_nft(
 }
 // This is the function that will be called by a validator to transfer an nft that is owned by this smart contract to the given address.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig: Sig) {
     require_unpause().unwrap();
     require_sig(action_id, sig.0, b"ValidateUnfreezeNft", action.clone()).unwrap();
@@ -407,6 +418,7 @@ pub(crate) async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfree
 }
 /// Basically the same as validate_transfer_nf but for multiple nfts.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn validate_transfer_nft_batch(
     action_id: Nat,
     action: ValidateTransferNftBatch,
@@ -429,6 +441,7 @@ pub(crate) async fn validate_transfer_nft_batch(
 }
 /// Basically the same as validate_unfreeze_nft but for multiple nfts.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn validate_unfreeze_nft_batch(
     action_id: Nat,
     action: ValidateUnfreezeNftBatch,
@@ -452,6 +465,7 @@ pub(crate) async fn validate_unfreeze_nft_batch(
 }
 /// THis function is used to freeze an nft (ie transfer it to this SC) so that it can be transferred.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn freeze_nft(
     tx_fee_block: BlockIndex,
     dip721_contract: Principal,
@@ -491,6 +505,7 @@ pub(crate) async fn freeze_nft(
 
 /// Performs the same function as freeze_nft but for multiple nfts.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn freeze_nft_batch(
     tx_fee_block: BlockIndex,
     dip721_contract: Principal,
@@ -536,6 +551,7 @@ pub(crate) async fn freeze_nft_batch(
 
 /// Burns the minted NFT with the given token_id.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn withdraw_nft(
     tx_fee_block: BlockIndex,
     burner: Principal,
@@ -569,6 +585,7 @@ pub(crate) async fn withdraw_nft(
 }
 /// Performs the same function as withdraw_nft but for multiple nfts.
 #[ic_kit::macros::update]
+#[candid_method(update)]
 pub(crate) async fn withdraw_nft_batch(
     tx_fee_block: BlockIndex,
     burner: Principal,
@@ -608,20 +625,45 @@ pub(crate) async fn withdraw_nft_batch(
 }
 /// Gets an event from the event storage of the contract.
 #[ic_kit::macros::query]
+#[candid_method(query)]
 pub(crate) fn get_event(action_id: Nat) -> Option<(BridgeEventCtx, BridgeEvent)> {
     EVENT_STORE.with(|store| store.borrow().get(&action_id).cloned())
 }
 
 /// Gets the config of the contract.
 #[ic_kit::macros::query]
+#[candid_method(query)]
 pub(crate) fn get_config() -> Config {
     config_ref().clone()
 }
 /// Checks if the contract is whitelisted or not
 #[ic_kit::macros::query]
+#[candid_method(query)]
 pub(crate) fn is_whitelisted(contract: Principal) -> bool {
     require_whitelist(contract).is_ok()
 }
 
+// #[cfg(test)]
+// mod tests;
+
+#[query(name = "__get_candid_interface_tmp_hack")]
+fn export_candid() -> String {
+    export_service!();
+    __export_service()
+}
+
 #[cfg(test)]
-mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn save_candid() {
+        use std::env;
+        use std::fs::write;
+        use std::path::PathBuf;
+
+        let dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let dir = dir.parent().unwrap().parent().unwrap().join("candid");
+        write(dir.join("bucket.did"), export_candid()).expect("Write failed.");
+    }
+}
