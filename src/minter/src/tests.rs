@@ -1,4 +1,7 @@
 use crate::ledger::{Block, Operation, QueryBlocksResponse, Transaction};
+use candid::export_service;
+
+use ic_cdk_macros::query;
 
 use super::*;
 use ed25519_compact::{KeyPair, Seed};
@@ -9,7 +12,7 @@ use rand::Rng;
 
 const NFT_URL: &str = "www.test.com";
 const BLOCK_INDEX_TXFEE: BlockIndex = 0;
-const CHAIN_NONCE: u64 = 7357;
+const CHAIN_NONCE: u64 = 28;
 const TARGET_NONCE: u64 = 2;
 const TX_FEE_BAL: u64 = 1000;
 const TARGET_ACC: &str = "TEST_ACC";
@@ -419,4 +422,21 @@ async fn withdraw_nft_batch_test() {
             uris: vec![NFT_URL.into(), NFT_URL.into()]
         })
     );
+}
+
+#[query(name = "__get_candid_interface_tmp_hack")]
+fn export_candid() -> String {
+    export_service!();
+    __export_service()
+}
+
+#[test]
+fn save_candid() {
+    use std::env;
+    use std::fs::write;
+    use std::path::PathBuf;
+
+    let dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let dir = dir.parent().unwrap().parent().unwrap().join("candid");
+    write(dir.join("bucket.did"), export_candid()).expect("Write failed.");
 }

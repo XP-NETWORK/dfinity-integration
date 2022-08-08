@@ -4,9 +4,7 @@ mod ledger;
 mod types;
 use actions::*;
 use candid::candid_method;
-use candid::export_service;
 use events::*;
-use ic_cdk_macros::query;
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 use types::ext_types::*;
@@ -636,6 +634,41 @@ pub(crate) fn get_event(action_id: Nat) -> Option<(BridgeEventCtx, BridgeEvent)>
 pub(crate) fn get_config() -> Config {
     config_ref().clone()
 }
+
+/// Encodes a ValidateTransferNft to Vec<u8>.
+#[ic_kit::macros::query]
+#[candid_method(query)]
+pub(crate) fn encode_validate_transfer_nft(aid: Nat, inner: ValidateTransferNft) -> Vec<u8> {
+    Encode!(&BridgeAction::new(aid, inner)).unwrap()
+}
+
+/// Encodes a ValidateTransferNft to Vec<u8>.
+#[ic_kit::macros::query]
+#[candid_method(query)]
+pub(crate) fn encode_validate_unfreeze_nft(aid: Nat, inner: ValidateUnfreezeNft) -> Vec<u8> {
+    Encode!(&BridgeAction::new(aid, inner)).unwrap()
+}
+
+/// Encodes a ValidateTransferNft to Vec<u8>.
+#[ic_kit::macros::query]
+#[candid_method(query)]
+pub(crate) fn encode_validate_unfreeze_nft_batch(
+    aid: Nat,
+    inner: ValidateUnfreezeNftBatch,
+) -> Vec<u8> {
+    Encode!(&BridgeAction::new(aid, inner)).unwrap()
+}
+
+/// Encodes a ValidateTransferNft to Vec<u8>.
+#[ic_kit::macros::query]
+#[candid_method(query)]
+pub(crate) fn encode_validate_transfer_nft_batch(
+    aid: Nat,
+    inner: ValidateTransferNftBatch,
+) -> Vec<u8> {
+    Encode!(&BridgeAction::new(aid, inner)).unwrap()
+}
+
 /// Checks if the contract is whitelisted or not
 #[ic_kit::macros::query]
 #[candid_method(query)]
@@ -643,27 +676,5 @@ pub(crate) fn is_whitelisted(contract: Principal) -> bool {
     require_whitelist(contract).is_ok()
 }
 
-// #[cfg(test)]
-// mod tests;
-
-#[query(name = "__get_candid_interface_tmp_hack")]
-fn export_candid() -> String {
-    export_service!();
-    __export_service()
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn save_candid() {
-        use std::env;
-        use std::fs::write;
-        use std::path::PathBuf;
-
-        let dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-        let dir = dir.parent().unwrap().parent().unwrap().join("candid");
-        write(dir.join("bucket.did"), export_candid()).expect("Write failed.");
-    }
-}
+mod tests;
