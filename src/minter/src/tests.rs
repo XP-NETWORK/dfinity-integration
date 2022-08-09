@@ -1,4 +1,3 @@
-use crate::ledger::{Block, Operation, QueryBlocksResponse, Transaction};
 use candid::export_service;
 
 use ic_cdk_macros::query;
@@ -6,7 +5,7 @@ use ic_cdk_macros::query;
 use super::*;
 use ed25519_compact::{KeyPair, Seed};
 use ic_kit::{async_test, mock_principals, Canister, Method, MockContext};
-use ic_ledger_types::{Timestamp, Tokens, TransferResult};
+use ic_ledger_types::{Block, QueryBlocksResponse, Timestamp, Tokens, Transaction, TransferResult};
 use lazy_static::lazy_static;
 use rand::Rng;
 
@@ -88,7 +87,7 @@ fn ledger_mock(bal_id: Principal, bal: Tokens) -> Canister {
             "query_blocks",
             Box::new(
                 Method::new()
-                    .expect_arguments((GetBlockArgs {
+                    .expect_arguments((GetBlocksArgs {
                         start: BLOCK_INDEX_TXFEE,
                         length: 1,
                     },))
@@ -141,7 +140,7 @@ fn init_context(ledger: Canister) -> &'static mut MockContext {
         .with_handler(ledger)
         .inject();
 
-    init(*KP.pk, CHAIN_NONCE, None);
+    init(*KP.pk, CHAIN_NONCE, vec![]);
 
     ctx
 }

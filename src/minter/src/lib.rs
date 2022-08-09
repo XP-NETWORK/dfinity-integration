@@ -1,10 +1,11 @@
 mod actions;
 mod events;
-mod ledger;
+
 mod types;
 use actions::*;
 use candid::candid_method;
 use events::*;
+use ic_ledger_types::{account_balance, query_blocks, transfer, GetBlocksArgs, Operation};
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 use types::ext_types::*;
@@ -23,7 +24,6 @@ use ic_ledger_types::{
     DEFAULT_SUBACCOUNT, MAINNET_LEDGER_CANISTER_ID,
 };
 
-use ledger::GetBlockArgs;
 use serde_big_array::BigArray;
 use sha2::{Digest, Sha512};
 use std::collections::BTreeSet;
@@ -93,6 +93,7 @@ pub enum BridgeError {
     InvalidSignature,
     BridgePaused,
     FeeTransferFailure,
+    FailedToQueryFee(String),
     NotWhitelisted,
     InvalidFee,
     ExternalCall(i32, String),
@@ -195,13 +196,20 @@ async fn require_tx_fee(
 
     let caller_acc = AccountIdentifier::new(&caller, &DEFAULT_SUBACCOUNT);
     let canister_acc = AccountIdentifier::new(&canister_id, &DEFAULT_SUBACCOUNT);
-    let query = GetBlockArgs {
+    let query = GetBlocksArgs {
         start: fee_block,
         length: 1,
     };
-    let block_info = ledger::query_blocks(MAINNET_LEDGER_CANISTER_ID, query).await?;
+    let block_info = query_blocks(MAINNET_LEDGER_CANISTER_ID, query)
+        .await
+        .map_err(|e| {
+            BridgeError::FailedToQueryFee(format!(
+                "Failed to Query for fee. Code: {:?}. Reason: {}",
+                e.0, e.1
+            ))
+        })?;
     match block_info.blocks[0].transaction.operation {
-        Some(ledger::Operation::Transfer {
+        Some(Operation::Transfer {
             from, to, amount, ..
         }) if from == caller_acc && to == canister_acc => Ok(amount.e8s()),
         _ => Err(BridgeError::InvalidFee),
@@ -284,7 +292,7 @@ async fn dip721_transfer(
 /// This is the function that is called when the bridge is initialized/contract is deployed.
 #[ic_kit::macros::init]
 #[candid_method(init)]
-pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Option<Vec<Principal>>) {
+pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Vec<String>) {
     unsafe {
         CONFIG = Some(Config {
             group_key,
@@ -293,11 +301,10 @@ pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Option<Vec<
             event_cnt: Nat::from(0),
         });
     }
-    if let Some(contracts) = whitelist {
-        contracts.iter().for_each(|contract| {
-            WHITELIST_STORE.with(|store| store.borrow_mut().insert(contract.clone()));
-        });
-    }
+    whitelist.iter().for_each(|w| {
+        let c = Principal::from_text(w).unwrap();
+        WHITELIST_STORE.with(|store| store.borrow_mut().insert(c));
+    });
 }
 /// This is the function that can be used to toggle the bridge's pause state.
 #[ic_kit::macros::update]
@@ -329,7 +336,7 @@ pub(crate) async fn withdraw_fees(
 
     let id = ic_kit::ic::id();
 
-    let bal = ledger::account_balance(
+    let bal = account_balance(
         MAINNET_LEDGER_CANISTER_ID,
         AccountBalanceArgs {
             account: AccountIdentifier::new(&id, &DEFAULT_SUBACCOUNT),
@@ -347,7 +354,7 @@ pub(crate) async fn withdraw_fees(
         created_at_time: None,
     };
 
-    ledger::transfer(MAINNET_LEDGER_CANISTER_ID, args)
+    transfer(MAINNET_LEDGER_CANISTER_ID, args)
         .await
         .unwrap()
         .unwrap()

@@ -59,7 +59,7 @@ type ValidateUnfreezeNftBatch = record {
 };
 type ValidateWhitelistDip721 = record { dip_contract : principal };
 type ValidateWithdrawFees = record { to : principal };
-service : (vec nat8, nat64, opt vec principal) -> {
+service : (vec nat8, nat64, vec text) -> {
   add_whitelist : (nat, ValidateWhitelistDip721, vec nat8) -> ();
   clean_logs : (nat, ValidateCleanLogs, vec nat8) -> ();
   encode_validate_transfer_nft : (nat, ValidateTransferNft) -> (vec nat8) query;
