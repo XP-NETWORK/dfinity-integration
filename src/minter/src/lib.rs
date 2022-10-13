@@ -242,7 +242,7 @@ fn token_id_to_principal(token: BigUint, id: Principal) -> Principal {
 }
 
 /// It makes an external call to burn an nft (ext standard) to the given contract.
-async fn xpnft_burn_for(id: Principal, token_id: Nat) -> CallResult<()> {
+async fn xpnft_burn_for(id: Principal, token_id: u32) -> CallResult<()> {
     ic_kit::ic::call(id, "burnNFT", (token_id,)).await
 }
 
@@ -577,7 +577,7 @@ pub(crate) async fn withdraw_nft(
         .unwrap()
         .0
         .unwrap();
-    xpnft_burn_for(burner, token_id.clone()).await.unwrap();
+    xpnft_burn_for(burner, token_id.clone().0.to_u32().unwrap()).await.unwrap();
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
     let ev = BridgeEvent::UnfreezeNft(UnfreezeNft {
@@ -616,7 +616,7 @@ pub(crate) async fn withdraw_nft_batch(
                 .0
                 .unwrap(),
         );
-        xpnft_burn_for(burner, token_id).await.unwrap();
+        xpnft_burn_for(burner, token_id.0.to_u32().unwrap()).await.unwrap();
     }
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
