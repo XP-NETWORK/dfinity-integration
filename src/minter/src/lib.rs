@@ -107,10 +107,13 @@ impl From<(RejectionCode, String)> for BridgeError {
 
 static mut CONFIG: Option<Config> = None;
 
+
+/// Gets a mutable reference to {Config}
 fn config_mut() -> &'static mut Config {
     return unsafe { CONFIG.as_mut().unwrap() };
 }
 
+/// Gets a unreadable reference to {Config}
 fn config_ref() -> &'static Config {
     return unsafe { CONFIG.as_ref().unwrap() };
 }
@@ -123,6 +126,8 @@ thread_local! {
     static FEEBLOCK_STORE: RefCell<FeeBlockStore> = RefCell::default();
 }
 
+/// Checks if the signature is correctly signed by the correct
+/// private key and makes sure the action id is not a duplicate.
 fn require_sig_i(
     store: &'static LocalKey<RefCell<ActionIdStore>>,
     action_id: Nat,
@@ -169,6 +174,7 @@ fn require_sig_config(
     require_sig_i(&ACTIONID_STORE_CONFIG, action_id, sig, context, inner)
 }
 
+/// Requires the contract to be in unpaused state.
 fn require_unpause() -> Result<(), BridgeError> {
     if config_ref().paused {
         return Err(BridgeError::BridgePaused);
@@ -177,6 +183,7 @@ fn require_unpause() -> Result<(), BridgeError> {
     return Ok(());
 }
 
+/// Requires the NFT contract as sent in the paramter to be a whitelisted contract.
 fn require_whitelist(contract: Principal) -> Result<(), BridgeError> {
     if !WHITELIST_STORE.with(|whitelist| whitelist.borrow().contains(&contract)) {
         return Err(BridgeError::NotWhitelisted);
@@ -185,6 +192,9 @@ fn require_whitelist(contract: Principal) -> Result<(), BridgeError> {
     return Ok(());
 }
 
+
+/// Checks in the prev blocks to make sure that
+/// the fees was paid for transfer of the NFT
 async fn require_tx_fee(
     canister_id: &Principal,
     caller: &Principal,
@@ -216,6 +226,7 @@ async fn require_tx_fee(
     }
 }
 
+/// Adds an event to the event store of the contract.
 fn add_event(ctx: BridgeEventCtx, ev: BridgeEvent) -> Nat {
     let action_id = ctx.action_id.clone();
     EVENT_STORE.with(|store| store.borrow_mut().insert(ctx.action_id.clone(), (ctx, ev)));
@@ -290,6 +301,7 @@ async fn dip721_transfer(
     Ok(())
 }
 /// This is the function that is called when the bridge is initialized/contract is deployed.
+/// It sets the group key, chainNonce and the contracts to whitelist NFTs.
 #[ic_kit::macros::init]
 #[candid_method(init)]
 pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Vec<String>) {
@@ -306,7 +318,8 @@ pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Vec<String>
         WHITELIST_STORE.with(|store| store.borrow_mut().insert(c));
     });
 }
-/// This is the function that can be used to toggle the bridge's pause state.
+/// This is the function that can be used to set bridge's state to paused.
+/// It will stop any transactions from happening on the bridge
 #[ic_kit::macros::update]
 #[candid_method(update)]
 pub(crate) fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) {
@@ -323,7 +336,9 @@ pub(crate) fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Si
 
     config_mut().group_key = action.group_key;
 }
-/// This is the function that can be used to withdraw the fees from the minter smart contract.
+/// This is the function that can be used to withdraw the fees from the minter smart contract
+/// that is earned by the NFT transfers.
+/// REQUIRED: The contract should not be in paused state.
 #[ic_kit::macros::update]
 #[candid_method(update)]
 pub(crate) async fn withdraw_fees(
@@ -361,6 +376,8 @@ pub(crate) async fn withdraw_fees(
 }
 
 /// This is the function that can be used to whitelist a smart contract so that it can be used for transfer.
+/// This is generally required for freezeing NFTs of only contracts verified by us.
+/// REQUIRED: The contract should not be in paused state.
 #[ic_kit::macros::update]
 #[candid_method(update)]
 pub(crate) fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig: Sig) {
@@ -372,6 +389,7 @@ pub(crate) fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig
 }
 
 /// This is the function that can be used to clean the event store of the contract.
+/// This removes all the actions that are stored in the event store.
 #[ic_kit::macros::update]
 #[candid_method(update)]
 pub(crate) fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig) {
@@ -386,7 +404,8 @@ pub(crate) fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig
         }
     });
 }
-// This is the function that will be called by a validator to mint a new nft which acts as a pointer to the original NFT on some other chain.
+/// This is the function that will be called by a validator to
+/// mint a new nft which acts as a pointer to the original nft on dfinity chain.
 #[ic_kit::macros::update]
 #[candid_method(update)]
 pub(crate) async fn validate_transfer_nft(
@@ -405,7 +424,8 @@ pub(crate) async fn validate_transfer_nft(
     ic_cdk::println!("Minted {mint}");
     mint
 }
-// This is the function that will be called by a validator to transfer an nft that is owned by this smart contract to the given address.
+/// This is the function that will be called by a validator to transfer
+/// a pointer nft to back to the original chain.
 #[ic_kit::macros::update]
 #[candid_method(update)]
 pub(crate) async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig: Sig) {
@@ -468,7 +488,8 @@ pub(crate) async fn validate_unfreeze_nft_batch(
             .unwrap();
     }
 }
-/// THis function is used to freeze an nft (ie transfer it to this SC) so that it can be transferred.
+/// This function is used to freeze an nft (ie transfer it to this SC) 
+/// so that it can be minted later on the destination chain.
 #[ic_kit::macros::update]
 #[candid_method(update)]
 pub(crate) async fn freeze_nft(
@@ -554,7 +575,8 @@ pub(crate) async fn freeze_nft_batch(
     add_event(ctx, ev)
 }
 
-/// Burns the minted NFT with the given token_id.
+/// Burns the minted NFT with the given token_id and later the
+/// token is minted back to the original chain.
 #[ic_kit::macros::update]
 #[candid_method(update)]
 pub(crate) async fn withdraw_nft(
@@ -588,6 +610,7 @@ pub(crate) async fn withdraw_nft(
 
     add_event(ctx, ev)
 }
+
 /// Performs the same function as withdraw_nft but for multiple nfts.
 #[ic_kit::macros::update]
 #[candid_method(update)]
