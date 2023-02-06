@@ -50,8 +50,7 @@ pub struct ValidateWhitelistDip721 {
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateCleanLogs {
-    pub from_action: Nat,
-    pub to_action: Nat,
+    pub action_id: Nat
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]

@@ -398,10 +398,7 @@ pub(crate) fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig
 
     EVENT_STORE.with(|store| {
         let mut bmap = store.borrow_mut();
-        while action.from_action != action.to_action {
-            bmap.remove(&action.from_action);
-            action.from_action += Nat::from(1u32);
-        }
+        bmap.clear();
     });
 }
 /// This is the function that will be called by a validator to
