@@ -204,8 +204,8 @@ async fn require_tx_fee(
         return Err(BridgeError::InvalidFee);
     }
 
-    let caller_acc = AccountIdentifier::new(&caller, &DEFAULT_SUBACCOUNT);
-    let canister_acc = AccountIdentifier::new(&canister_id, &DEFAULT_SUBACCOUNT);
+    let caller_acc = AccountIdentifier::new(caller, &DEFAULT_SUBACCOUNT);
+    let canister_acc = AccountIdentifier::new(canister_id, &DEFAULT_SUBACCOUNT);
     let query = GetBlocksArgs {
         start: fee_block,
         length: 1,
