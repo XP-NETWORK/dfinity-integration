@@ -455,6 +455,8 @@ pub(crate) async fn validate_transfer_nft_batch(
     )
     .unwrap();
 
+    assert_eq!(action.mint_with.len(), action.token_urls.len());
+
     for (i, token_url) in action.token_urls.into_iter().enumerate() {
         xpnft_mint(action.mint_with[i], token_url, action.to)
             .await
@@ -479,6 +481,9 @@ pub(crate) async fn validate_unfreeze_nft_batch(
     .unwrap();
 
     let canister_id = ic_kit::ic::id();
+
+    assert_eq!(action.token_ids.len(), action.dip_contracts.len());
+
     for (i, token_id) in action.token_ids.into_iter().enumerate() {
         dip721_transfer(action.dip_contracts[i], canister_id, action.to, token_id)
             .await
