@@ -107,7 +107,6 @@ impl From<(RejectionCode, String)> for BridgeError {
 
 static mut CONFIG: Option<Config> = None;
 
-
 /// Gets a mutable reference to {Config}
 fn config_mut() -> &'static mut Config {
     return unsafe { CONFIG.as_mut().unwrap() };
@@ -192,7 +191,6 @@ fn require_whitelist(contract: Principal) -> Result<(), BridgeError> {
     return Ok(());
 }
 
-
 /// Checks in the prev blocks to make sure that
 /// the fees was paid for transfer of the NFT
 async fn require_tx_fee(
@@ -273,6 +271,18 @@ async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<St
         }
     }
     return Ok((None,));
+}
+
+async fn xpnft_bearer(id: Principal, token_id: Nat) -> AccountIdentifier {
+    let result: (MotokoResult<AccountIdentifier, CommonError>,) =
+        ic_kit::ic::call(id, "bearer", (token_id_to_principal(token_id.into(), id),))
+            .await
+            .unwrap();
+    if let (MotokoResult::Ok(account),) = result {
+        account
+    } else {
+        panic!("Failed to get bearer: {:?}", result)
+    }
 }
 
 /// It makes an external call to get the transfer an nft (ext standard) to the given contract.
@@ -490,7 +500,7 @@ pub(crate) async fn validate_unfreeze_nft_batch(
             .unwrap();
     }
 }
-/// This function is used to freeze an nft (ie transfer it to this SC) 
+/// This function is used to freeze an nft (ie transfer it to this SC)
 /// so that it can be minted later on the destination chain.
 #[ic_kit::macros::update]
 #[candid_method(update)]
@@ -590,6 +600,12 @@ pub(crate) async fn withdraw_nft(
 ) -> Nat {
     require_unpause().unwrap();
 
+    let bearer = xpnft_bearer(burner, token_id.clone()).await;
+
+    let caller = AccountIdentifier::new(&ic_kit::ic::caller(), &DEFAULT_SUBACCOUNT);
+
+    assert!(bearer == caller, "Token owner is not the caller");
+
     let caller = ic_kit::ic::caller();
     let canister_id = ic_kit::ic::id();
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
@@ -601,7 +617,10 @@ pub(crate) async fn withdraw_nft(
         .unwrap()
         .0
         .unwrap();
-    xpnft_burn_for(burner, token_id.clone().0.to_u32().unwrap()).await.unwrap();
+
+    xpnft_burn_for(burner, token_id.clone().0.to_u32().unwrap())
+        .await
+        .unwrap();
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
     let ev = BridgeEvent::UnfreezeNft(UnfreezeNft {
@@ -634,6 +653,12 @@ pub(crate) async fn withdraw_nft_batch(
     let mut urls = Vec::with_capacity(token_ids.len());
 
     for token_id in token_ids.clone() {
+        let bearer = xpnft_bearer(burner, token_id.clone()).await;
+
+        let caller = AccountIdentifier::new(&ic_kit::ic::caller(), &DEFAULT_SUBACCOUNT);
+
+        assert!(bearer == caller, "Token owner is not the caller");
+
         urls.push(
             dip721_token_uri(burner, token_id.clone())
                 .await
@@ -641,7 +666,9 @@ pub(crate) async fn withdraw_nft_batch(
                 .0
                 .unwrap(),
         );
-        xpnft_burn_for(burner, token_id.0.to_u32().unwrap()).await.unwrap();
+        xpnft_burn_for(burner, token_id.0.to_u32().unwrap())
+            .await
+            .unwrap();
     }
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
