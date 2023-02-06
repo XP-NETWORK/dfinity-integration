@@ -55,7 +55,7 @@ impl CandidType for Sig {
 
 impl<T: CandidType> BridgeAction<T> {
     pub fn new(action_id: Nat, inner: T) -> Self {
-        let conf = unsafe { CONFIG.as_ref().unwrap() };
+        let conf = config_ref();
         Self {
             chain_nonce: conf.chain_nonce,
             sc_addr: ic_kit::ic::id(),
