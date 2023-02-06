@@ -149,7 +149,7 @@ fn require_sig_i(
     let hash = hasher.finalize();
 
     let sig = Signature::new(sig);
-    let key = PublicKey::new(config_ref().group_key.clone());
+    let key = PublicKey::new(config_ref().group_key);
     key.verify(hash, &sig)
         .map_err(|_| BridgeError::InvalidSignature)?;
 
