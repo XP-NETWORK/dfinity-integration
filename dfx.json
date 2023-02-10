@@ -14,6 +14,11 @@
       "type": "rust",
       "package": "minter",
       "candid": "src/minter/minter.did"
+    },
+    "price-oracle": {
+      "type": "rust",
+      "package": "price_oracle",
+      "candid": "src/price_oracle/price_oracle.did"
     }
   },
   "defaults": {
