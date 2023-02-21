@@ -402,7 +402,7 @@ pub(crate) fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig
 /// This removes all the actions that are stored in the event store.
 #[ic_kit::macros::update]
 #[candid_method(update)]
-pub(crate) fn clean_logs(action_id: Nat, mut action: ValidateCleanLogs, sig: Sig) {
+pub(crate) fn clean_logs(action_id: Nat, action: ValidateCleanLogs, sig: Sig) {
     require_unpause().unwrap();
     require_sig_config(action_id, sig.0, b"ValidateCleanLogs", action.clone()).unwrap();
 
