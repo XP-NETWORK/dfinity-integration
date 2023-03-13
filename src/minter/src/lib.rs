@@ -8,6 +8,7 @@ use events::*;
 use ic_ledger_types::{account_balance, query_blocks, transfer, GetBlocksArgs, Operation};
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
+use serde::Serialize;
 use types::ext_types::*;
 use types::motoko_types::*;
 
@@ -64,6 +65,13 @@ impl<T: CandidType> BridgeAction<T> {
         }
     }
 }
+#[derive(Serialize, Deserialize, Debug, Clone, CandidType)]
+pub struct TransferTx {
+    value: u128,
+    from_chain: u8,
+    to_chain: u8,
+    to: String,
+}
 
 impl BridgeEventCtx {
     pub fn new(tx_fee: u64, chain_nonce: u64, to: String) -> Self {
@@ -82,6 +90,7 @@ impl BridgeEventCtx {
 #[derive(Clone, Debug, CandidType, Deserialize)]
 struct Config {
     group_key: [u8; 32],
+    fee_public_key: [u8; 32],
     event_cnt: Nat,
     paused: bool,
     chain_nonce: u64,
@@ -314,13 +323,19 @@ async fn dip721_transfer(
 /// It sets the group key, chainNonce and the contracts to whitelist NFTs.
 #[ic_kit::macros::init]
 #[candid_method(init)]
-pub(crate) fn init(group_key: [u8; 32], chain_nonce: u64, whitelist: Vec<String>) {
+pub(crate) fn init(
+    group_key: [u8; 32],
+    fee_public_key: [u8; 32],
+    chain_nonce: u64,
+    whitelist: Vec<String>,
+) {
     unsafe {
         CONFIG = Some(Config {
             group_key,
             chain_nonce,
             paused: false,
             event_cnt: Nat::from(0),
+            fee_public_key,
         });
     }
     whitelist.iter().for_each(|w| {
@@ -345,6 +360,15 @@ pub(crate) fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Si
     require_sig_config(action_id, sig.0, b"ValidateSetGroupKey", action.clone()).unwrap();
 
     config_mut().group_key = action.group_key;
+}
+
+#[ic_kit::macros::update]
+#[candid_method(update)]
+pub(crate) fn set_fee_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) {
+    require_unpause().unwrap();
+    require_sig_config(action_id, sig.0, b"ValidateSetGroupKey", action.clone()).unwrap();
+
+    config_mut().fee_public_key = action.group_key;
 }
 /// This is the function that can be used to withdraw the fees from the minter smart contract
 /// that is earned by the NFT transfers.
@@ -511,6 +535,7 @@ pub(crate) async fn freeze_nft(
     chain_nonce: u64,
     to: String,
     mint_with: String,
+    sig: Sig,
 ) -> Nat {
     require_unpause().unwrap();
     require_whitelist(dip721_contract).unwrap();
@@ -520,6 +545,16 @@ pub(crate) async fn freeze_nft(
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
         .unwrap();
+
+    check_fee(
+        TransferTx {
+            from_chain: 0x1c,
+            value: fee as u128,
+            to_chain: chain_nonce as u8,
+            to: to.clone(),
+        },
+        sig,
+    );
 
     dip721_transfer(dip721_contract, caller, canister_id, token_id.clone())
         .await
@@ -597,6 +632,7 @@ pub(crate) async fn withdraw_nft(
     token_id: Nat,
     chain_nonce: u64,
     to: String,
+    sig: Sig,
 ) -> Nat {
     require_unpause().unwrap();
 
@@ -611,6 +647,16 @@ pub(crate) async fn withdraw_nft(
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
         .unwrap();
+
+    check_fee(
+        TransferTx {
+            from_chain: 0x1c,
+            value: fee as u128,
+            to_chain: chain_nonce as u8,
+            to: to.clone(),
+        },
+        sig,
+    );
 
     let url = dip721_token_uri(burner, token_id.clone())
         .await
@@ -721,6 +767,19 @@ pub(crate) fn encode_validate_unfreeze_nft_batch(
 /// Encodes a ValidateTransferNft to Vec<u8>.
 #[ic_kit::macros::query]
 #[candid_method(query)]
+pub(crate) fn encode_transfer_tx(from_chain: u8, to_chain: u8, to: String, value: u128) -> Vec<u8> {
+    Encode!(&TransferTx {
+        from_chain,
+        to_chain,
+        to,
+        value
+    })
+    .unwrap()
+}
+
+/// Encodes a ValidateTransferNft to Vec<u8>.
+#[ic_kit::macros::query]
+#[candid_method(query)]
 pub(crate) fn encode_validate_transfer_nft_batch(
     aid: Nat,
     inner: ValidateTransferNftBatch,
@@ -733,6 +792,18 @@ pub(crate) fn encode_validate_transfer_nft_batch(
 #[candid_method(query)]
 pub(crate) fn is_whitelisted(contract: Principal) -> bool {
     require_whitelist(contract).is_ok()
+}
+
+pub(crate) fn check_fee(data: TransferTx, sig_data: Sig) {
+    let fee_pk = config_ref().fee_public_key;
+    let mut hasher = Sha512::new();
+    hasher.update(Encode!(&data).unwrap());
+    let hash = hasher.finalize();
+    let sig = Signature::new(sig_data.0);
+    let key = PublicKey::new(fee_pk);
+    let _ = key
+        .verify(hash, &sig)
+        .expect("Amount Signature Verification Failed");
 }
 
 #[cfg(test)]
