@@ -20,6 +20,7 @@ serde = "1.0.132"
 serde-big-array = { version = "0.3", features = ["const-generics"] }
 num-bigint = "*"
 num-traits = "*"
+hex = "*"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 async-std = { version="1.10.0", features = ["attributes"] }

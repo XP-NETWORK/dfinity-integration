@@ -71,6 +71,7 @@ pub struct TransferTx {
     from_chain: u8,
     to_chain: u8,
     to: String,
+    num: u128,
 }
 
 impl BridgeEventCtx {
@@ -552,6 +553,7 @@ pub(crate) async fn freeze_nft(
             value: fee as u128,
             to_chain: chain_nonce as u8,
             to: to.clone(),
+            num: 1,
         },
         sig,
     );
@@ -586,6 +588,7 @@ pub(crate) async fn freeze_nft_batch(
     chain_nonce: u64,
     to: String,
     mint_with: String,
+    sig: Sig,
 ) -> Nat {
     require_unpause().unwrap();
     require_whitelist(dip721_contract).unwrap();
@@ -596,6 +599,17 @@ pub(crate) async fn freeze_nft_batch(
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
         .unwrap();
+
+    check_fee(
+        TransferTx {
+            from_chain: 0x1c,
+            value: fee as u128,
+            to_chain: chain_nonce as u8,
+            to: to.clone(),
+            num: token_ids.len() as u128,
+        },
+        sig,
+    );
 
     let mut urls = Vec::with_capacity(token_ids.len());
     for token_id in token_ids.clone() {
@@ -654,6 +668,7 @@ pub(crate) async fn withdraw_nft(
             value: fee as u128,
             to_chain: chain_nonce as u8,
             to: to.clone(),
+            num: 1,
         },
         sig,
     );
@@ -687,14 +702,27 @@ pub(crate) async fn withdraw_nft_batch(
     token_ids: Vec<Nat>,
     chain_nonce: u64,
     to: String,
+    sig: Sig,
 ) -> Nat {
     require_unpause().unwrap();
 
     let caller = ic_kit::ic::caller();
     let canister_id = ic_kit::ic::id();
+
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
         .unwrap();
+
+    check_fee(
+        TransferTx {
+            from_chain: 0x1c,
+            value: fee as u128,
+            to_chain: chain_nonce as u8,
+            to: to.clone(),
+            num: token_ids.len() as u128,
+        },
+        sig,
+    );
 
     let mut urls = Vec::with_capacity(token_ids.len());
 
@@ -767,12 +795,19 @@ pub(crate) fn encode_validate_unfreeze_nft_batch(
 /// Encodes a ValidateTransferNft to Vec<u8>.
 #[ic_kit::macros::query]
 #[candid_method(query)]
-pub(crate) fn encode_transfer_tx(from_chain: u8, to_chain: u8, to: String, value: u128) -> Vec<u8> {
+pub(crate) fn encode_transfer_tx(
+    from_chain: u8,
+    to_chain: u8,
+    to: String,
+    value: u128,
+    num: u128,
+) -> Vec<u8> {
     Encode!(&TransferTx {
         from_chain,
         to_chain,
         to,
-        value
+        value,
+        num
     })
     .unwrap()
 }

@@ -140,7 +140,7 @@ fn init_context(ledger: Canister) -> &'static mut MockContext {
         .with_handler(ledger)
         .inject();
 
-    init(*KP.pk, CHAIN_NONCE, vec![]);
+    init(*KP.pk, *KP.pk, CHAIN_NONCE, vec![]);
 
     ctx
 }
@@ -292,6 +292,7 @@ async fn freeze_nft_test() {
         TARGET_NONCE,
         TARGET_ACC.into(),
         TARGET_MW.into(),
+        Sig([0; 64]),
     )
     .await;
 
@@ -327,6 +328,7 @@ async fn freeze_nft_batch_test() {
         TARGET_NONCE,
         TARGET_ACC.into(),
         TARGET_MW.into(),
+        Sig([0; 64]),
     )
     .await;
 
@@ -363,6 +365,7 @@ async fn withdraw_nft_test() {
         TOKEN_ID.clone(),
         TARGET_NONCE,
         TARGET_ACC.into(),
+        Sig([0; 64]),
     )
     .await;
 
@@ -398,6 +401,7 @@ async fn withdraw_nft_batch_test() {
         vec![TOKEN_ID.clone(), TOKEN_ID.clone()],
         TARGET_NONCE,
         TARGET_ACC.into(),
+        Sig([0; 64]),
     )
     .await;
 
