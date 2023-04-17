@@ -9,15 +9,14 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-candid = "0.7.4"
-ic-kit = "0.4.4"
-ic-cdk = "0.4"
-ic-cdk-macros = "0.4"
-ic-ledger-types = "0.1.2"
-ed25519-compact = { version = "1.0.11", default-features = false }
-sha2 = { version = "0.9", default-features = false }
+candid = "0.8.4"
+ic-cdk = "0.7.4"
+ic-cdk-macros = "0.6.10"
+ic-ledger-types = "0.4.2"
+ed25519-compact = { version = "2.0.4", default-features = false }
+sha2 = { version = "0.10.6", default-features = false }
 serde = "1.0.132"
-serde-big-array = { version = "0.3", features = ["const-generics"] }
+serde-big-array = { version = "0.5.1" }
 num-bigint = "*"
 num-traits = "*"
 hex = "*"

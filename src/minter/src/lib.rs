@@ -4,28 +4,31 @@ mod events;
 mod types;
 use actions::*;
 use candid::candid_method;
+use candid::types::Compound;
+use candid::types::Type;
+use candid::CandidType;
+use candid::Deserialize;
+use candid::Encode;
+use candid::Nat;
+use candid::Principal;
 use events::*;
+use ic_cdk::api::call::CallResult;
+use ic_cdk::api::call::RejectionCode;
 use ic_ledger_types::{account_balance, query_blocks, transfer, GetBlocksArgs, Operation};
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 use serde::Serialize;
+use serde_big_array::BigArray;
 use types::ext_types::*;
 use types::motoko_types::*;
 
 use ed25519_compact::{PublicKey, Signature};
-use ic_kit::{
-    candid::{
-        types::{Compound, Type},
-        CandidType, Deserialize, Encode, Nat,
-    },
-    CallResult, Principal, RejectionCode,
-};
+
 use ic_ledger_types::{
     AccountBalanceArgs, AccountIdentifier, BlockIndex, Memo, TransferArgs, DEFAULT_FEE,
     DEFAULT_SUBACCOUNT, MAINNET_LEDGER_CANISTER_ID,
 };
 
-use serde_big_array::BigArray;
 use sha2::{Digest, Sha512};
 use std::collections::BTreeSet;
 use std::{cell::RefCell, collections::BTreeMap, thread::LocalKey};
@@ -59,7 +62,7 @@ impl<T: CandidType> BridgeAction<T> {
         let conf = config_ref();
         Self {
             chain_nonce: conf.chain_nonce,
-            sc_addr: ic_kit::ic::id(),
+            sc_addr: ic_cdk::id(),
             action_id,
             inner,
         }
@@ -242,7 +245,7 @@ fn add_event(ctx: BridgeEventCtx, ev: BridgeEvent) -> Nat {
 }
 /// It makes an external call to mint an nft (ext standard) to the given contract.
 async fn xpnft_mint(id: Principal, url: String, to: Principal) -> CallResult<(u32,)> {
-    ic_kit::ic::call(
+    ic_cdk::call(
         id,
         "mintNFT",
         (MintRequest {
@@ -262,14 +265,14 @@ fn token_id_to_principal(token: BigUint, id: Principal) -> Principal {
 
 /// It makes an external call to burn an nft (ext standard) to the given contract.
 async fn xpnft_burn_for(id: Principal, token_id: u32) -> CallResult<()> {
-    ic_kit::ic::call(id, "burnNFT", (token_id,)).await
+    ic_cdk::call(id, "burnNFT", (token_id,)).await
 }
 
 /// It makes an external call to get the metadata of nft (ext standard) to the given contract.
 async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<String>,)> {
     let principal = token_id_to_principal(token_id.0, id);
     let result: (MotokoResult<Metadata, CommonError>,) =
-        ic_kit::ic::call(id, "metadata", (principal.to_text(),))
+        ic_cdk::call(id, "metadata", (principal.to_text(),))
             .await
             .unwrap();
     if let MotokoResult::Ok(metadata) = result.0 {
@@ -285,7 +288,7 @@ async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<St
 
 async fn xpnft_bearer(id: Principal, token_id: Nat) -> AccountIdentifier {
     let result: (MotokoResult<AccountIdentifier, CommonError>,) =
-        ic_kit::ic::call(id, "bearer", (token_id_to_principal(token_id.into(), id),))
+        ic_cdk::call(id, "bearer", (token_id_to_principal(token_id.into(), id),))
             .await
             .unwrap();
     if let (MotokoResult::Ok(account),) = result {
@@ -303,7 +306,7 @@ async fn dip721_transfer(
     token_id: Nat,
 ) -> CallResult<()> {
     let principal = token_id_to_principal(token_id.0, id);
-    let _result: (MotokoResult<Nat, TransferResponseErrors>,) = ic_kit::ic::call(
+    let _result: (MotokoResult<Nat, TransferResponseErrors>,) = ic_cdk::call(
         id,
         "transfer",
         (TransferRequest {
@@ -322,7 +325,7 @@ async fn dip721_transfer(
 }
 /// This is the function that is called when the bridge is initialized/contract is deployed.
 /// It sets the group key, chainNonce and the contracts to whitelist NFTs.
-#[ic_kit::macros::init]
+#[ic_cdk_macros::init]
 #[candid_method(init)]
 pub(crate) fn init(
     group_key: [u8; 32],
@@ -346,7 +349,7 @@ pub(crate) fn init(
 }
 /// This is the function that can be used to set bridge's state to paused.
 /// It will stop any transactions from happening on the bridge
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) {
     require_sig_config(action_id, sig.0, b"ValidateSetPause", action.clone()).unwrap();
@@ -354,7 +357,7 @@ pub(crate) fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) {
 }
 
 /// This is the function that can be used to set the bridge's group key.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) {
     require_unpause().unwrap();
@@ -363,7 +366,7 @@ pub(crate) fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Si
     config_mut().group_key = action.group_key;
 }
 
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) fn set_fee_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) {
     require_unpause().unwrap();
@@ -374,7 +377,7 @@ pub(crate) fn set_fee_group_key(action_id: Nat, action: ValidateSetGroupKey, sig
 /// This is the function that can be used to withdraw the fees from the minter smart contract
 /// that is earned by the NFT transfers.
 /// REQUIRED: The contract should not be in paused state.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn withdraw_fees(
     action_id: Nat,
@@ -384,7 +387,7 @@ pub(crate) async fn withdraw_fees(
     require_unpause().unwrap();
     require_sig_config(action_id, sig.0, b"ValidateWithdrawFees", action.clone()).unwrap();
 
-    let id = ic_kit::ic::id();
+    let id = ic_cdk::id();
 
     let bal = account_balance(
         MAINNET_LEDGER_CANISTER_ID,
@@ -413,7 +416,7 @@ pub(crate) async fn withdraw_fees(
 /// This is the function that can be used to whitelist a smart contract so that it can be used for transfer.
 /// This is generally required for freezeing NFTs of only contracts verified by us.
 /// REQUIRED: The contract should not be in paused state.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig: Sig) {
     require_unpause().unwrap();
@@ -425,7 +428,7 @@ pub(crate) fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig
 
 /// This is the function that can be used to clean the event store of the contract.
 /// This removes all the actions that are stored in the event store.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) fn clean_logs(action_id: Nat, action: ValidateCleanLogs, sig: Sig) {
     require_unpause().unwrap();
@@ -438,7 +441,7 @@ pub(crate) fn clean_logs(action_id: Nat, action: ValidateCleanLogs, sig: Sig) {
 }
 /// This is the function that will be called by a validator to
 /// mint a new nft which acts as a pointer to the original nft on dfinity chain.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn validate_transfer_nft(
     action_id: Nat,
@@ -458,7 +461,7 @@ pub(crate) async fn validate_transfer_nft(
 }
 /// This is the function that will be called by a validator to transfer
 /// a pointer nft to back to the original chain.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig: Sig) {
     require_unpause().unwrap();
@@ -466,7 +469,7 @@ pub(crate) async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfree
 
     dip721_transfer(
         action.dip_contract,
-        ic_kit::ic::id(),
+        ic_cdk::id(),
         action.to,
         action.token_id,
     )
@@ -474,7 +477,7 @@ pub(crate) async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfree
     .unwrap();
 }
 /// Basically the same as validate_transfer_nf but for multiple nfts.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn validate_transfer_nft_batch(
     action_id: Nat,
@@ -499,7 +502,7 @@ pub(crate) async fn validate_transfer_nft_batch(
     }
 }
 /// Basically the same as validate_unfreeze_nft but for multiple nfts.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn validate_unfreeze_nft_batch(
     action_id: Nat,
@@ -515,7 +518,7 @@ pub(crate) async fn validate_unfreeze_nft_batch(
     )
     .unwrap();
 
-    let canister_id = ic_kit::ic::id();
+    let canister_id = ic_cdk::id();
 
     assert_eq!(action.token_ids.len(), action.dip_contracts.len());
 
@@ -527,7 +530,7 @@ pub(crate) async fn validate_unfreeze_nft_batch(
 }
 /// This function is used to freeze an nft (ie transfer it to this SC)
 /// so that it can be minted later on the destination chain.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn freeze_nft(
     tx_fee_block: BlockIndex,
@@ -541,8 +544,8 @@ pub(crate) async fn freeze_nft(
     require_unpause().unwrap();
     require_whitelist(dip721_contract).unwrap();
 
-    let caller = ic_kit::ic::caller();
-    let canister_id = ic_kit::ic::id();
+    let caller = ic_cdk::caller();
+    let canister_id = ic_cdk::id();
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
         .unwrap();
@@ -579,7 +582,7 @@ pub(crate) async fn freeze_nft(
 }
 
 /// Performs the same function as freeze_nft but for multiple nfts.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn freeze_nft_batch(
     tx_fee_block: BlockIndex,
@@ -593,8 +596,8 @@ pub(crate) async fn freeze_nft_batch(
     require_unpause().unwrap();
     require_whitelist(dip721_contract).unwrap();
 
-    let caller = ic_kit::ic::caller();
-    let canister_id = ic_kit::ic::id();
+    let caller = ic_cdk::caller();
+    let canister_id = ic_cdk::id();
 
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
@@ -638,7 +641,7 @@ pub(crate) async fn freeze_nft_batch(
 
 /// Burns the minted NFT with the given token_id and later the
 /// token is minted back to the original chain.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn withdraw_nft(
     tx_fee_block: BlockIndex,
@@ -652,12 +655,12 @@ pub(crate) async fn withdraw_nft(
 
     let bearer = xpnft_bearer(burner, token_id.clone()).await;
 
-    let caller = AccountIdentifier::new(&ic_kit::ic::caller(), &DEFAULT_SUBACCOUNT);
+    let caller = AccountIdentifier::new(&ic_cdk::caller(), &DEFAULT_SUBACCOUNT);
 
     assert!(bearer == caller, "Token owner is not the caller");
 
-    let caller = ic_kit::ic::caller();
-    let canister_id = ic_kit::ic::id();
+    let caller = ic_cdk::caller();
+    let canister_id = ic_cdk::id();
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
         .unwrap();
@@ -694,7 +697,7 @@ pub(crate) async fn withdraw_nft(
 }
 
 /// Performs the same function as withdraw_nft but for multiple nfts.
-#[ic_kit::macros::update]
+#[ic_cdk::update]
 #[candid_method(update)]
 pub(crate) async fn withdraw_nft_batch(
     tx_fee_block: BlockIndex,
@@ -706,8 +709,8 @@ pub(crate) async fn withdraw_nft_batch(
 ) -> Nat {
     require_unpause().unwrap();
 
-    let caller = ic_kit::ic::caller();
-    let canister_id = ic_kit::ic::id();
+    let caller = ic_cdk::caller();
+    let canister_id = ic_cdk::id();
 
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
@@ -729,7 +732,7 @@ pub(crate) async fn withdraw_nft_batch(
     for token_id in token_ids.clone() {
         let bearer = xpnft_bearer(burner, token_id.clone()).await;
 
-        let caller = AccountIdentifier::new(&ic_kit::ic::caller(), &DEFAULT_SUBACCOUNT);
+        let caller = AccountIdentifier::new(&ic_cdk::caller(), &DEFAULT_SUBACCOUNT);
 
         assert!(bearer == caller, "Token owner is not the caller");
 
@@ -755,35 +758,35 @@ pub(crate) async fn withdraw_nft_batch(
     add_event(ctx, ev)
 }
 /// Gets an event from the event storage of the contract.
-#[ic_kit::macros::query]
+#[ic_cdk::query]
 #[candid_method(query)]
 pub(crate) fn get_event(action_id: Nat) -> Option<(BridgeEventCtx, BridgeEvent)> {
     EVENT_STORE.with(|store| store.borrow().get(&action_id).cloned())
 }
 
 /// Gets the config of the contract.
-#[ic_kit::macros::query]
+#[ic_cdk::query]
 #[candid_method(query)]
 pub(crate) fn get_config() -> Config {
     config_ref().clone()
 }
 
 /// Encodes a ValidateTransferNft to Vec<u8>.
-#[ic_kit::macros::query]
+#[ic_cdk::query]
 #[candid_method(query)]
 pub(crate) fn encode_validate_transfer_nft(aid: Nat, inner: ValidateTransferNft) -> Vec<u8> {
     Encode!(&BridgeAction::new(aid, inner)).unwrap()
 }
 
 /// Encodes a ValidateTransferNft to Vec<u8>.
-#[ic_kit::macros::query]
+#[ic_cdk::query]
 #[candid_method(query)]
 pub(crate) fn encode_validate_unfreeze_nft(aid: Nat, inner: ValidateUnfreezeNft) -> Vec<u8> {
     Encode!(&BridgeAction::new(aid, inner)).unwrap()
 }
 
 /// Encodes a ValidateTransferNft to Vec<u8>.
-#[ic_kit::macros::query]
+#[ic_cdk::query]
 #[candid_method(query)]
 pub(crate) fn encode_validate_unfreeze_nft_batch(
     aid: Nat,
@@ -793,7 +796,7 @@ pub(crate) fn encode_validate_unfreeze_nft_batch(
 }
 
 /// Encodes a ValidateTransferNft to Vec<u8>.
-#[ic_kit::macros::query]
+#[ic_cdk::query]
 #[candid_method(query)]
 pub(crate) fn encode_transfer_tx(
     from_chain: u8,
@@ -813,7 +816,7 @@ pub(crate) fn encode_transfer_tx(
 }
 
 /// Encodes a ValidateTransferNft to Vec<u8>.
-#[ic_kit::macros::query]
+#[ic_cdk::query]
 #[candid_method(query)]
 pub(crate) fn encode_validate_transfer_nft_batch(
     aid: Nat,
@@ -823,7 +826,7 @@ pub(crate) fn encode_validate_transfer_nft_batch(
 }
 
 /// Checks if the contract is whitelisted or not
-#[ic_kit::macros::query]
+#[ic_cdk::query]
 #[candid_method(query)]
 pub(crate) fn is_whitelisted(contract: Principal) -> bool {
     require_whitelist(contract).is_ok()
