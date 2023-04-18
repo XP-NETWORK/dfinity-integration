@@ -400,7 +400,7 @@ pub(crate) async fn withdraw_fees(
 
     let args = TransferArgs {
         memo: Memo(0),
-        amount: bal,
+        amount: bal - DEFAULT_FEE,
         fee: DEFAULT_FEE,
         from_subaccount: None,
         to: AccountIdentifier::new(&action.to, &DEFAULT_SUBACCOUNT),
