@@ -232,7 +232,10 @@ async fn require_tx_fee(
     match block_info.blocks[0].transaction.operation {
         Some(Operation::Transfer {
             from, to, amount, ..
-        }) if from == caller_acc && to == canister_acc => Ok(amount.e8s()),
+        }) if from == caller_acc && to == canister_acc => {
+            FEEBLOCK_STORE.with(|s| s.borrow_mut().insert(fee_block));
+            Ok(amount.e8s())
+        }
         _ => Err(BridgeError::InvalidFee),
     }
 }
