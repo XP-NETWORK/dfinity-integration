@@ -1,47 +1,19 @@
-# minter
+### How to convert ICP to cycles -
 
-Welcome to your new minter project and to the internet computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
-
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
-
-To learn more before you start working with minter, see the following documentation available online:
-
-- [Quick Start](https://smartcontracts.org/docs/quickstart/quickstart-intro.html)
-- [SDK Developer Tools](https://smartcontracts.org/docs/developers-guide/sdk-guide.html)
-- [Rust Canister Devlopment Guide](https://smartcontracts.org/docs/rust-guide/rust-intro.html)
-- [ic-cdk](https://docs.rs/ic-cdk)
-- [ic-cdk-macros](https://docs.rs/ic-cdk-macros)
-- [Candid Introduction](https://smartcontracts.org/docs/candid-guide/candid-intro.html)
-- [JavaScript API Reference](https://erxue-5aaaa-aaaab-qaagq-cai.raw.ic0.app)
-
-If you want to start working on your project right away, you might want to try the following commands:
-
-```bash
-cd minter/
-dfx help
-dfx config --help
-```
-
-## Running the project locally
-
-If you want to test your project locally, you can use the following commands:
-
-```bash
-# Starts the replica, running in the background
-dfx start --background
-
-# Deploys your canisters to the replica and generates your candid interface
-dfx deploy
-```
-
-Once the job completes, your application will be available at `http://localhost:8000?canisterId={asset_canister_id}`.
-
-## Tests
+Follow the instructions at - https://medium.com/dfinity/converting-icp-into-cycles-javascript-9b0dba8d8e00
 
 ### Minter
 
-Make sure to run tests in single thread
+Make sure you have enough cycles in your account to deploy canisters.
 
-```bash
-cargo test --package minter -- --test-threads 1
-```
+**_ dfx deploy minter --network ic --argument '(group_key, fee_public_key, chain_nonce, whitelist)' _**
+
+ie dfx deploy minter --network ic --argument '(vec {35;129;26;181;204;54;158;190;252;138;189;179;55;164;183;162;81;179;201;231;180;53;17;94;131;152;124;248;146;27;138;162}, vec {77;169;194;176;185;135;211;24;138;121;130;249;221;145;108;194;92;241;151;218;23;240;2;249;215;248;184;42;50;115;136;50}, 28, vec {"54aho-4iaaa-aaaap-aa3va-cai"})'
+
+### XPNFT
+
+Make sure you have enough cycles in your account to deploy canisters.
+
+**_ dfx deploy xpnft --network ic --argument '(bridge_address)' _**
+
+ie dfx deploy xpnft --network ic --argument '("53bb2-rqaaa-aaaap-aa3vq-cai")'
