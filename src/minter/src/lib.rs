@@ -289,11 +289,14 @@ async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<St
     return Ok((None,));
 }
 
-async fn xpnft_bearer(id: Principal, token_id: Nat) -> AccountIdentifier {
-    let result: (MotokoResult<AccountIdentifier, CommonError>,) =
-        ic_cdk::call(id, "bearer", (token_id_to_principal(token_id.into(), id),))
-            .await
-            .unwrap();
+async fn xpnft_bearer(id: Principal, token_id: Nat) -> String {
+    let result: (MotokoResult<String, CommonError>,) = ic_cdk::call(
+        id,
+        "bearer",
+        (token_id_to_principal(token_id.into(), id).to_text(),),
+    )
+    .await
+    .unwrap();
     if let (MotokoResult::Ok(account),) = result {
         account
     } else {
@@ -655,14 +658,13 @@ pub(crate) async fn withdraw_nft(
     sig: Sig,
 ) -> Nat {
     require_unpause().unwrap();
+    let caller = ic_cdk::caller();
+    let calleraid = AccountIdentifier::new(&caller, &DEFAULT_SUBACCOUNT).to_string();
 
     let bearer = xpnft_bearer(burner, token_id.clone()).await;
 
-    let caller = AccountIdentifier::new(&ic_cdk::caller(), &DEFAULT_SUBACCOUNT);
+    assert!(bearer == calleraid, "Token owner is not the caller");
 
-    assert!(bearer == caller, "Token owner is not the caller");
-
-    let caller = ic_cdk::caller();
     let canister_id = ic_cdk::id();
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
         .await
@@ -733,11 +735,10 @@ pub(crate) async fn withdraw_nft_batch(
     let mut urls = Vec::with_capacity(token_ids.len());
 
     for token_id in token_ids.clone() {
+        let calleraid = AccountIdentifier::new(&caller, &DEFAULT_SUBACCOUNT).to_string();
         let bearer = xpnft_bearer(burner, token_id.clone()).await;
 
-        let caller = AccountIdentifier::new(&ic_cdk::caller(), &DEFAULT_SUBACCOUNT);
-
-        assert!(bearer == caller, "Token owner is not the caller");
+        assert!(bearer == calleraid, "Token owner is not the caller");
 
         urls.push(
             dip721_token_uri(burner, token_id.clone())
