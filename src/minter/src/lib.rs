@@ -582,6 +582,7 @@ pub(crate) async fn freeze_nft(
         dip721_contract,
         token_data: url,
         mint_with,
+        caller,
     });
 
     add_event(ctx, ev)
@@ -640,6 +641,7 @@ pub(crate) async fn freeze_nft_batch(
         dip721_contract,
         token_datas: urls,
         mint_with,
+        caller,
     });
 
     add_event(ctx, ev)
@@ -696,6 +698,7 @@ pub(crate) async fn withdraw_nft(
         token_id,
         burner,
         uri: url,
+        caller,
     });
 
     add_event(ctx, ev)
@@ -757,6 +760,7 @@ pub(crate) async fn withdraw_nft_batch(
         token_ids,
         burner,
         uris: urls,
+        caller,
     });
 
     add_event(ctx, ev)

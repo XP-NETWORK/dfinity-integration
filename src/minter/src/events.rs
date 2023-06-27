@@ -14,6 +14,7 @@ pub struct TransferNft {
     pub dip721_contract: Principal,
     pub token_data: String,
     pub mint_with: String,
+    pub caller: Principal,
 }
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
@@ -21,6 +22,7 @@ pub struct UnfreezeNft {
     pub token_id: Nat,
     pub burner: Principal,
     pub uri: String,
+    pub caller: Principal,
 }
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
@@ -29,6 +31,7 @@ pub struct TransferNftBatch {
     pub dip721_contract: Principal,
     pub token_datas: Vec<String>,
     pub mint_with: String,
+    pub caller: Principal,
 }
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
@@ -36,6 +39,7 @@ pub struct UnfreezeNftBatch {
     pub token_ids: Vec<Nat>,
     pub burner: Principal,
     pub uris: Vec<String>,
+    pub caller: Principal,
 }
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
