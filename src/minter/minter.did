@@ -66,22 +66,23 @@ service : (vec nat8, vec nat8, nat64, vec text) -> {
   encode_transfer_tx : (nat8, nat8, text, nat, nat) -> (vec nat8) query;
   encode_validate_transfer_nft : (nat, ValidateTransferNft) -> (vec nat8) query;
   encode_validate_transfer_nft_batch : (nat, ValidateTransferNftBatch) -> (
-      vec nat8,
-    ) query;
+    vec nat8
+  ) query;
   encode_validate_unfreeze_nft : (nat, ValidateUnfreezeNft) -> (vec nat8) query;
   encode_validate_unfreeze_nft_batch : (nat, ValidateUnfreezeNftBatch) -> (
-      vec nat8,
-    ) query;
+    vec nat8
+  ) query;
+  encode_withdraw_fees : (nat, ValidateWithdrawFees) -> (vec nat8) query;
   freeze_nft : (nat64, principal, nat, nat64, text, text, vec nat8) -> (nat);
   freeze_nft_batch : (
-      nat64,
-      principal,
-      vec nat,
-      nat64,
-      text,
-      text,
-      vec nat8,
-    ) -> (nat);
+    nat64,
+    principal,
+    vec nat,
+    nat64,
+    text,
+    text,
+    vec nat8,
+  ) -> (nat);
   get_config : () -> (Config) query;
   get_event : (nat) -> (opt record { BridgeEventCtx; BridgeEvent }) query;
   is_whitelisted : (principal) -> (bool) query;
@@ -95,6 +96,6 @@ service : (vec nat8, vec nat8, nat64, vec text) -> {
   withdraw_fees : (nat, ValidateWithdrawFees, vec nat8) -> (nat64);
   withdraw_nft : (nat64, principal, nat, nat64, text, vec nat8) -> (nat);
   withdraw_nft_batch : (nat64, principal, vec nat, nat64, text, vec nat8) -> (
-      nat,
-    );
-}
+    nat
+  );
+};

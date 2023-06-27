@@ -829,6 +829,13 @@ pub(crate) fn encode_validate_transfer_nft_batch(
     Encode!(&BridgeAction::new(aid, inner)).unwrap()
 }
 
+/// Encodes a ValidateTransferNft to Vec<u8>.
+#[ic_cdk::query]
+#[candid_method(query)]
+pub(crate) fn encode_withdraw_fees(aid: Nat, inner: ValidateWithdrawFees) -> Vec<u8> {
+    Encode!(&BridgeAction::new(aid, inner)).unwrap()
+}
+
 /// Checks if the contract is whitelisted or not
 #[ic_cdk::query]
 #[candid_method(query)]
