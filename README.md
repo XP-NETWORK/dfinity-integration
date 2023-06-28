@@ -1,6 +1,12 @@
 ### How to convert ICP to cycles -
+Import your wallet pem = dfx identity import <IDENTITY> <WALLET_PEM>
+Convert ICP to TC - dfx quickstart --identity <IDENTITY>
 
-Follow the instructions at - https://medium.com/dfinity/converting-icp-into-cycles-javascript-9b0dba8d8e00
+** Wasm is needed to compile canister **
+>> rustup target add wasm32-unknown-unknown
+
+** Then Build the contract **
+>> cargo build --target wasm32-unknown-unknown --release
 
 ### Minter
 
