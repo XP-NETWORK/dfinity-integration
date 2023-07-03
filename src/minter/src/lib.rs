@@ -312,7 +312,7 @@ async fn dip721_transfer(
     token_id: Nat,
 ) -> CallResult<()> {
     let principal = token_id_to_principal(token_id.0, id);
-    let _result: (MotokoResult<Nat, TransferResponseErrors>,) = ic_cdk::call(
+    let (result,): (MotokoResult<Nat, TransferResponseErrors>,) = ic_cdk::call(
         id,
         "transfer",
         (TransferRequest {
@@ -327,6 +327,11 @@ async fn dip721_transfer(
     )
     .await
     .unwrap();
+    if let MotokoResult::Ok(_) = result {
+        return Ok(());
+    } else {
+        panic!("Failed to transfer: {:?}", result)
+    }
     Ok(())
 }
 /// This is the function that is called when the bridge is initialized/contract is deployed.
