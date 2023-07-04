@@ -17,3 +17,8 @@ target/
 node_modules/
 dist/
 canister_ids.json
+
+# keys
+*pem
+secrets.*
+.env
