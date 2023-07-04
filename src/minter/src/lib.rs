@@ -332,7 +332,6 @@ async fn dip721_transfer(
     } else {
         panic!("Failed to transfer: {:?}", result)
     }
-    Ok(())
 }
 /// This is the function that is called when the bridge is initialized/contract is deployed.
 /// It sets the group key, chainNonce and the contracts to whitelist NFTs.
