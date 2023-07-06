@@ -73,3 +73,26 @@ Development example:
 `dfx deploy xpnft --network ic --argument '("53bb2-rqaaa-aaaap-aa3vq-cai")'`
 Productioin Example:
 `dfx deploy xpnft --network ic --argument '("nwewk-zyaaa-aaaan-qd3kq-cai")' --identity dima`
+
+
+### UMT
+
+UserNftMinter is a contract where anybody can mint NFT (usually for testing purposes)
+
+Production example:
+
+```bash
+dfx deploy umt --network ic  --identity dima
+```
+
+### Staging contracts
+
+minter: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=coptt-jaaaa-aaaap-qbjbq-cai
+umt: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=cvkpw-tyaaa-aaaap-qbjda-cai
+xpnft: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=c4jek-fqaaa-aaaap-qbjcq-cai
+
+### Production contracts
+
+minter: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=nwewk-zyaaa-aaaan-qd3kq-cai
+umt: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=mvi7m-naaaa-aaaan-qd3ma-cai
+xpnft: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=n7h5w-pqaaa-aaaan-qd3la-cai
