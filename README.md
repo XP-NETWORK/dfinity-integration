@@ -96,3 +96,34 @@ xpnft: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=c4jek-fqaaa-aaaap-qbj
 minter: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=nwewk-zyaaa-aaaan-qd3kq-cai
 umt: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=mvi7m-naaaa-aaaan-qd3ma-cai
 xpnft: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=n7h5w-pqaaa-aaaan-qd3la-cai
+
+## Deploying custom XPNFT
+
+1. Get the account
+
+```bash
+dfx identity --network ic get-wallet --identity dima
+```
+example output:
+```bash
+necbt-viaaa-aaaan-qd3jq-cai
+```
+
+2. Convert cycles
+
+```bash
+dfx ledger --network ic top-up --amount 3 necbt-viaaa-aaaan-qd3jq-cai --identity dima
+```
+3. Remove the old XPNFT record
+
+```json
+"xpnft": {
+    "ic": "kfev6-niaaa-aaaan-qd3zq-cai"
+  }
+```
+
+4. Deploy
+
+```bash
+dfx deploy xpnft --network ic --argument '("nwewk-zyaaa-aaaan-qd3kq-cai")' --identity dima
+```
