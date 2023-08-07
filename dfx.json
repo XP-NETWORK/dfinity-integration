@@ -19,6 +19,10 @@
       "type": "rust",
       "package": "price_oracle",
       "candid": "src/price_oracle/price_oracle.did"
+    },
+    "creator": {
+      "type": "motoko",
+      "main": "src/creator/Creator.mo"
     }
   },
   "defaults": {
