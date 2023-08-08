@@ -42,4 +42,15 @@ shared (install) actor class Creator(creators : [Principal]) = this {
         collections_map.put(identifier, address);
         Principal.fromActor(collection);
     };
+
+    //Internal cycle management - good general case
+    public func acceptCycles() : async () {
+        let available = Cycles.available();
+        let accepted = Cycles.accept(available);
+        assert (accepted == available);
+    };
+
+    public query func availableCycles() : async Nat {
+        return Cycles.balance();
+    };
 };
