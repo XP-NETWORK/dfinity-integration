@@ -36,7 +36,7 @@ shared (install) actor class Creator(creators : [Principal]) = this {
         // Assert that the collection does not already exist
         assert Option.isNull(collections_map.get(identifier));
         // Create the collection
-        Cycles.add(100000000000);
+        Cycles.add(500_000_000_000);
         let collection = await Xpnft.XPNFT(Principal.toText(minter));
         let address = Principal.fromActor(collection);
         collections_map.put(identifier, address);
