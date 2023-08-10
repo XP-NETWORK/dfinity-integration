@@ -1,12 +1,19 @@
 ### How to convert ICP to cycles -
+
 Import your wallet pem = dfx identity import <IDENTITY> <WALLET_PEM>
 Convert ICP to TC - dfx quickstart --identity <IDENTITY>
 
 ** Wasm is needed to compile canister **
->> rustup target add wasm32-unknown-unknown
+
+> > rustup target add wasm32-unknown-unknown
 
 ** Then Build the contract **
->> cargo build --target wasm32-unknown-unknown --release
+
+> > cargo build --target wasm32-unknown-unknown --release
+
+** If you do not have enough cycles **
+
+> > dfx ledger --network ic top-up --amount <AMOUNT(ie 0.5)> <Your Wallet Canister Address>
 
 ### Minter
 
