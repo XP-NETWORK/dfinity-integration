@@ -1,3 +1,5 @@
+use std::{fmt, path::Display};
+
 use candid::{CandidType, Nat, Principal};
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
@@ -48,4 +50,52 @@ pub enum BridgeEvent {
     TransferNftBatch(TransferNftBatch),
     UnfreezeNft(UnfreezeNft),
     UnfreezeNftBatch(UnfreezeNftBatch),
+}
+
+#[derive(Debug, Clone, CandidType)]
+pub enum KeyType {
+    FeeKey,
+    BridgeGroupKey,
+}
+
+impl fmt::Display for KeyType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KeyType::FeeKey => write!(f, "fee_key"),
+            KeyType::BridgeGroupKey => write!(f, "bridge_group_key"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, CandidType)]
+pub enum ValidatedEvent {
+    ValidatedMint {
+        mint_with: Principal,
+        token_id: u32,
+    },
+    ValidatedUnfreeze {
+        contract: Principal,
+        token_id: Nat,
+        to: Principal,
+    },
+    ValidatedMintBatch {
+        mint_with: Vec<Principal>,
+        token_ids: Vec<u32>,
+    },
+    ValidatedUnfreezeBatch {
+        contracts: Vec<Principal>,
+        token_ids: Vec<Nat>,
+        to: Principal,
+    },
+    ValidatedPause {
+        paused: bool,
+    },
+    ValidatedUpdateKey {
+        key: [u8; 32],
+        key_type: KeyType,
+    },
+    ValidatedFeeWithdraw {
+        to: Principal,
+        block_index: u64,
+    },
 }

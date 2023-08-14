@@ -36,6 +36,7 @@ use std::{cell::RefCell, collections::BTreeMap, thread::LocalKey};
 type ActionIdStore = BTreeSet<Nat>;
 type WhitelistStore = BTreeSet<Principal>;
 type EventStore = BTreeMap<Nat, (BridgeEventCtx, BridgeEvent)>;
+type ValidatedEventStore = BTreeMap<Nat, ValidatedEvent>;
 type FeeBlockStore = BTreeSet<BlockIndex>;
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -136,6 +137,7 @@ thread_local! {
     static WHITELIST_STORE: RefCell<WhitelistStore> = RefCell::default();
     static EVENT_STORE: RefCell<EventStore> = RefCell::default();
     static FEEBLOCK_STORE: RefCell<FeeBlockStore> = RefCell::default();
+    static VALIDATED_EVENT_STORE: RefCell<ValidatedEventStore> = RefCell::default();
 }
 
 /// Checks if the signature is correctly signed by the correct
@@ -361,41 +363,92 @@ pub(crate) fn init(
 /// It will stop any transactions from happening on the bridge
 #[ic_cdk::update]
 #[candid_method(update)]
-pub(crate) fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) {
-    require_sig_config(action_id, sig.0, b"ValidateSetPause", action.clone()).unwrap();
+pub(crate) fn set_pause(action_id: Nat, action: ValidateSetPause, sig: Sig) -> u32 {
+    require_sig_config(
+        action_id.clone(),
+        sig.0,
+        b"ValidateSetPause",
+        action.clone(),
+    )
+    .unwrap();
     config_mut().paused = action.pause;
+    VALIDATED_EVENT_STORE.with(|store| {
+        store.borrow_mut().insert(
+            action_id.clone(),
+            ValidatedEvent::ValidatedPause {
+                paused: action.pause,
+            },
+        )
+    });
+    action_id.0.to_u32().unwrap()
 }
 
 /// This is the function that can be used to set the bridge's group key.
 #[ic_cdk::update]
 #[candid_method(update)]
-pub(crate) fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) {
+pub(crate) fn set_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) -> u32 {
     require_unpause().unwrap();
-    require_sig_config(action_id, sig.0, b"ValidateSetGroupKey", action.clone()).unwrap();
+    require_sig_config(
+        action_id.clone(),
+        sig.0,
+        b"ValidateSetGroupKey",
+        action.clone(),
+    )
+    .unwrap();
 
     config_mut().group_key = action.group_key;
+
+    VALIDATED_EVENT_STORE.with(|store| {
+        store.borrow_mut().insert(
+            action_id.clone(),
+            ValidatedEvent::ValidatedUpdateKey {
+                key: action.group_key,
+                key_type: KeyType::BridgeGroupKey,
+            },
+        )
+    });
+    action_id.0.to_u32().unwrap()
 }
 
 #[ic_cdk::update]
 #[candid_method(update)]
-pub(crate) fn set_fee_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) {
+pub(crate) fn set_fee_group_key(action_id: Nat, action: ValidateSetGroupKey, sig: Sig) -> u32 {
     require_unpause().unwrap();
-    require_sig_config(action_id, sig.0, b"ValidateSetGroupKey", action.clone()).unwrap();
+    require_sig_config(
+        action_id.clone(),
+        sig.0,
+        b"ValidateSetGroupKey",
+        action.clone(),
+    )
+    .unwrap();
 
     config_mut().fee_public_key = action.group_key;
+
+    VALIDATED_EVENT_STORE.with(|store| {
+        store.borrow_mut().insert(
+            action_id.clone(),
+            ValidatedEvent::ValidatedUpdateKey {
+                key: action.group_key,
+                key_type: KeyType::FeeKey,
+            },
+        )
+    });
+    action_id.0.to_u32().unwrap()
 }
 /// This is the function that can be used to withdraw the fees from the minter smart contract
 /// that is earned by the NFT transfers.
 /// REQUIRED: The contract should not be in paused state.
 #[ic_cdk::update]
 #[candid_method(update)]
-pub(crate) async fn withdraw_fees(
-    action_id: Nat,
-    action: ValidateWithdrawFees,
-    sig: Sig,
-) -> BlockIndex {
+pub(crate) async fn withdraw_fees(action_id: Nat, action: ValidateWithdrawFees, sig: Sig) -> u32 {
     require_unpause().unwrap();
-    require_sig_config(action_id, sig.0, b"ValidateWithdrawFees", action.clone()).unwrap();
+    require_sig_config(
+        action_id.clone(),
+        sig.0,
+        b"ValidateWithdrawFees",
+        action.clone(),
+    )
+    .unwrap();
 
     let id = ic_cdk::id();
 
@@ -417,10 +470,21 @@ pub(crate) async fn withdraw_fees(
         created_at_time: None,
     };
 
-    transfer(MAINNET_LEDGER_CANISTER_ID, args)
+    let block_index = transfer(MAINNET_LEDGER_CANISTER_ID, args)
         .await
         .unwrap()
-        .unwrap()
+        .unwrap();
+
+    VALIDATED_EVENT_STORE.with(|store| {
+        store.borrow_mut().insert(
+            action_id.clone(),
+            ValidatedEvent::ValidatedFeeWithdraw {
+                to: action.to,
+                block_index,
+            },
+        )
+    });
+    action_id.0.to_u32().unwrap()
 }
 
 /// This is the function that can be used to whitelist a smart contract so that it can be used for transfer.
@@ -440,9 +504,15 @@ pub(crate) fn add_whitelist(action_id: Nat, action: ValidateWhitelistDip721, sig
 /// This removes all the actions that are stored in the event store.
 #[ic_cdk::update]
 #[candid_method(update)]
-pub(crate) fn clean_logs(action_id: Nat, action: ValidateCleanLogs, sig: Sig) {
+pub(crate) fn clean_logs(action_id: Nat, action: ValidateCleanLogs, sig: Sig) -> () {
     require_unpause().unwrap();
-    require_sig_config(action_id, sig.0, b"ValidateCleanLogs", action.clone()).unwrap();
+    require_sig_config(
+        action_id.clone(),
+        sig.0,
+        b"ValidateCleanLogs",
+        action.clone(),
+    )
+    .unwrap();
 
     EVENT_STORE.with(|store| {
         let mut bmap = store.borrow_mut();
@@ -460,31 +530,69 @@ pub(crate) async fn validate_transfer_nft(
 ) -> u32 {
     require_unpause().unwrap();
     ic_cdk::println!("Not Paused");
-    require_sig(action_id, sig.0, b"ValidateTransferNft", action.clone()).unwrap();
+    require_sig(
+        action_id.clone(),
+        sig.0,
+        b"ValidateTransferNft",
+        action.clone(),
+    )
+    .unwrap();
     ic_cdk::println!("Sig Verified");
-    let mint = xpnft_mint(action.mint_with, action.token_url, action.to)
+    let mint = xpnft_mint(action.mint_with, action.clone().token_url, action.to)
         .await
         .unwrap()
         .0;
     ic_cdk::println!("Minted {mint}");
-    mint
+    VALIDATED_EVENT_STORE.with(|store| {
+        let mut st = store.borrow_mut();
+        st.insert(
+            action_id.clone(),
+            ValidatedEvent::ValidatedMint {
+                mint_with: action.mint_with,
+                token_id: mint,
+            },
+        )
+    });
+    action_id.0.to_u32().unwrap()
 }
 /// This is the function that will be called by a validator to transfer
 /// a pointer nft to back to the original chain.
 #[ic_cdk::update]
 #[candid_method(update)]
-pub(crate) async fn validate_unfreeze_nft(action_id: Nat, action: ValidateUnfreezeNft, sig: Sig) {
+pub(crate) async fn validate_unfreeze_nft(
+    action_id: Nat,
+    action: ValidateUnfreezeNft,
+    sig: Sig,
+) -> u32 {
     require_unpause().unwrap();
-    require_sig(action_id, sig.0, b"ValidateUnfreezeNft", action.clone()).unwrap();
+    require_sig(
+        action_id.clone(),
+        sig.0,
+        b"ValidateUnfreezeNft",
+        action.clone(),
+    )
+    .unwrap();
 
     dip721_transfer(
         action.dip_contract,
         ic_cdk::id(),
-        action.to,
-        action.token_id,
+        action.clone().to,
+        action.clone().token_id,
     )
     .await
     .unwrap();
+    VALIDATED_EVENT_STORE.with(|store| {
+        let mut st = store.borrow_mut();
+        st.insert(
+            action_id.clone(),
+            ValidatedEvent::ValidatedUnfreeze {
+                contract: action.dip_contract,
+                token_id: action.token_id,
+                to: action.to,
+            },
+        )
+    });
+    action_id.0.to_u32().unwrap()
 }
 /// Basically the same as validate_transfer_nf but for multiple nfts.
 #[ic_cdk::update]
@@ -496,7 +604,7 @@ pub(crate) async fn validate_transfer_nft_batch(
 ) {
     require_unpause().unwrap();
     require_sig(
-        action_id,
+        action_id.clone(),
         sig.0,
         b"ValidateTransferNftBatch",
         action.clone(),
@@ -504,12 +612,24 @@ pub(crate) async fn validate_transfer_nft_batch(
     .unwrap();
 
     assert_eq!(action.mint_with.len(), action.token_urls.len());
-
-    for (i, token_url) in action.token_urls.into_iter().enumerate() {
-        xpnft_mint(action.mint_with[i], token_url, action.to)
+    let mut token_ids = vec![];
+    for (i, token_url) in action.clone().token_urls.into_iter().enumerate() {
+        let (token_id,) = xpnft_mint(action.mint_with[i], token_url, action.to)
             .await
             .unwrap();
+        token_ids.push(token_id)
     }
+    VALIDATED_EVENT_STORE.with(|store| {
+        let mut st = store.borrow_mut();
+        st.insert(
+            action_id.clone(),
+            ValidatedEvent::ValidatedMintBatch {
+                mint_with: action.mint_with,
+                token_ids,
+            },
+        )
+    });
+    action_id.0.to_u32().unwrap();
 }
 /// Basically the same as validate_unfreeze_nft but for multiple nfts.
 #[ic_cdk::update]
@@ -518,10 +638,10 @@ pub(crate) async fn validate_unfreeze_nft_batch(
     action_id: Nat,
     action: ValidateUnfreezeNftBatch,
     sig: Sig,
-) {
+) -> u32 {
     require_unpause().unwrap();
     require_sig(
-        action_id,
+        action_id.clone(),
         sig.0,
         b"ValidateUnfreezeNftBatch",
         action.clone(),
@@ -532,11 +652,23 @@ pub(crate) async fn validate_unfreeze_nft_batch(
 
     assert_eq!(action.token_ids.len(), action.dip_contracts.len());
 
-    for (i, token_id) in action.token_ids.into_iter().enumerate() {
+    for (i, token_id) in action.clone().token_ids.into_iter().enumerate() {
         dip721_transfer(action.dip_contracts[i], canister_id, action.to, token_id)
             .await
             .unwrap();
     }
+    VALIDATED_EVENT_STORE.with(|store| {
+        let mut st = store.borrow_mut();
+        st.insert(
+            action_id.clone(),
+            ValidatedEvent::ValidatedUnfreezeBatch {
+                contracts: action.dip_contracts,
+                token_ids: action.token_ids,
+                to: action.to,
+            },
+        )
+    });
+    action_id.0.to_u32().unwrap()
 }
 /// This function is used to freeze an nft (ie transfer it to this SC)
 /// so that it can be minted later on the destination chain.
@@ -774,6 +906,12 @@ pub(crate) async fn withdraw_nft_batch(
 #[candid_method(query)]
 pub(crate) fn get_event(action_id: Nat) -> Option<(BridgeEventCtx, BridgeEvent)> {
     EVENT_STORE.with(|store| store.borrow().get(&action_id).cloned())
+}
+
+#[ic_cdk::query]
+#[candid_method(query)]
+pub(crate) fn get_validated_event(action_id: Nat) -> Option<ValidatedEvent> {
+    VALIDATED_EVENT_STORE.with(|store| store.borrow().get(&action_id).cloned())
 }
 
 /// Gets the config of the contract.

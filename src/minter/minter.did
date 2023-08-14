@@ -17,21 +17,30 @@ type Config = record {
   group_key : vec nat8;
   paused : bool;
 };
+type KeyType = variant { FeeKey; BridgeGroupKey };
 type TransferNft = record {
   dip721_contract : principal;
   token_id : nat;
   mint_with : text;
+  caller : principal;
   token_data : text;
 };
 type TransferNftBatch = record {
   dip721_contract : principal;
   token_datas : vec text;
   mint_with : text;
+  caller : principal;
   token_ids : vec nat;
 };
-type UnfreezeNft = record { uri : text; token_id : nat; burner : principal };
+type UnfreezeNft = record {
+  uri : text;
+  token_id : nat;
+  caller : principal;
+  burner : principal;
+};
 type UnfreezeNftBatch = record {
   uris : vec text;
+  caller : principal;
   token_ids : vec nat;
   burner : principal;
 };
@@ -60,6 +69,26 @@ type ValidateUnfreezeNftBatch = record {
 };
 type ValidateWhitelistDip721 = record { dip_contract : principal };
 type ValidateWithdrawFees = record { to : principal };
+type ValidatedEvent = variant {
+  ValidatedPause : record { paused : bool };
+  ValidatedUpdateKey : record { key : vec nat8; key_type : KeyType };
+  ValidatedUnfreeze : record {
+    to : principal;
+    token_id : nat;
+    contract : principal;
+  };
+  ValidatedUnfreezeBatch : record {
+    to : principal;
+    contracts : vec principal;
+    token_ids : vec nat;
+  };
+  ValidatedMintBatch : record {
+    mint_with : vec principal;
+    token_ids : vec nat32;
+  };
+  ValidatedMint : record { token_id : nat32; mint_with : principal };
+  ValidatedFeeWithdraw : record { to : principal; block_index : nat64 };
+};
 service : (vec nat8, vec nat8, nat64, vec text) -> {
   add_whitelist : (nat, ValidateWhitelistDip721, vec nat8) -> ();
   clean_logs : (nat, ValidateCleanLogs, vec nat8) -> ();
@@ -85,15 +114,18 @@ service : (vec nat8, vec nat8, nat64, vec text) -> {
   ) -> (nat);
   get_config : () -> (Config) query;
   get_event : (nat) -> (opt record { BridgeEventCtx; BridgeEvent }) query;
+  get_validated_event : (nat) -> (opt ValidatedEvent) query;
   is_whitelisted : (principal) -> (bool) query;
-  set_fee_group_key : (nat, ValidateSetGroupKey, vec nat8) -> ();
-  set_group_key : (nat, ValidateSetGroupKey, vec nat8) -> ();
-  set_pause : (nat, ValidateSetPause, vec nat8) -> ();
+  set_fee_group_key : (nat, ValidateSetGroupKey, vec nat8) -> (nat32);
+  set_group_key : (nat, ValidateSetGroupKey, vec nat8) -> (nat32);
+  set_pause : (nat, ValidateSetPause, vec nat8) -> (nat32);
   validate_transfer_nft : (nat, ValidateTransferNft, vec nat8) -> (nat32);
   validate_transfer_nft_batch : (nat, ValidateTransferNftBatch, vec nat8) -> ();
-  validate_unfreeze_nft : (nat, ValidateUnfreezeNft, vec nat8) -> ();
-  validate_unfreeze_nft_batch : (nat, ValidateUnfreezeNftBatch, vec nat8) -> ();
-  withdraw_fees : (nat, ValidateWithdrawFees, vec nat8) -> (nat64);
+  validate_unfreeze_nft : (nat, ValidateUnfreezeNft, vec nat8) -> (nat32);
+  validate_unfreeze_nft_batch : (nat, ValidateUnfreezeNftBatch, vec nat8) -> (
+    nat32
+  );
+  withdraw_fees : (nat, ValidateWithdrawFees, vec nat8) -> (nat32);
   withdraw_nft : (nat64, principal, nat, nat64, text, vec nat8) -> (nat);
   withdraw_nft_batch : (nat64, principal, vec nat, nat64, text, vec nat8) -> (
     nat
