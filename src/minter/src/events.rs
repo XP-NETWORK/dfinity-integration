@@ -1,4 +1,4 @@
-use std::{fmt, path::Display};
+use std::fmt;
 
 use candid::{CandidType, Nat, Principal};
 
