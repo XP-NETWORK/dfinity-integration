@@ -1,11 +1,12 @@
 use std::{collections::BTreeMap, iter::FromIterator};
 
 use candid::Principal;
+use ic_cdk::api::call::CallResult;
 use num_traits::ToPrimitive;
 
 use crate::types::icrc7::{self, ICRC7Metadata, MetadataValue, MintArgs, TransferArgs};
 
-pub async fn mint(canister: Principal, id: u128, mint_args: MintArgs) -> u128 {
+pub async fn mint(canister: Principal, _id: u128, mint_args: MintArgs) -> u128 {
     let (result,): (u128,) = ic_cdk::call(canister, "icrc7_mint", (mint_args,))
         .await
         .unwrap();
@@ -18,7 +19,7 @@ pub async fn burn(canister: Principal, id: u128) -> u128 {
 }
 
 pub async fn transfer(canister: Principal, from: Principal, to: Principal, id: u128) -> u128 {
-    let (result,): (u128,) = ic_cdk::call(
+    let (result,): (CallResult<u128>,) = ic_cdk::call(
         canister,
         "icrc7_transfer",
         (TransferArgs {
@@ -39,7 +40,7 @@ pub async fn transfer(canister: Principal, from: Principal, to: Principal, id: u
     )
     .await
     .unwrap();
-    result
+    result.unwrap()
 }
 
 pub async fn metadata(canister: Principal, id: u128) -> ICRC7Metadata {
