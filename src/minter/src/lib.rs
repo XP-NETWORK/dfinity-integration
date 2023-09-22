@@ -19,8 +19,7 @@ use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 use serde::Serialize;
 use serde_big_array::BigArray;
-use types::ext_types::*;
-use types::motoko_types::*;
+mod xpnft;
 
 use ed25519_compact::{PublicKey, Signature};
 
@@ -247,93 +246,6 @@ fn add_event(ctx: BridgeEventCtx, ev: BridgeEvent) -> Nat {
     let action_id = ctx.action_id.clone();
     EVENT_STORE.with(|store| store.borrow_mut().insert(ctx.action_id.clone(), (ctx, ev)));
     action_id
-}
-/// It makes an external call to mint an nft (ext standard) to the given contract.
-async fn xpnft_mint(id: Principal, url: String, to: Principal) -> CallResult<(u32,)> {
-    ic_cdk::call(
-        id,
-        "mintNFT",
-        (MintRequest {
-            metadata: Some(url.as_bytes().to_vec()),
-            to: User::Principal(to),
-        },),
-    )
-    .await
-}
-/// It combines the token id and canister id to generate a token identifier for the ext standard.
-fn token_id_to_principal(token: BigUint, id: Principal) -> Principal {
-    let mut to32_bytes = token.to_u32().unwrap().to_le_bytes();
-    to32_bytes.reverse();
-    let vec = &[b"\x0Atid", id.as_slice(), &to32_bytes].concat();
-    Principal::from_slice(vec)
-}
-
-/// It makes an external call to burn an nft (ext standard) to the given contract.
-async fn xpnft_burn_for(id: Principal, token_id: u32) -> CallResult<()> {
-    ic_cdk::call(id, "burnNFT", (token_id,)).await
-}
-
-/// It makes an external call to get the metadata of nft (ext standard) to the given contract.
-async fn dip721_token_uri(id: Principal, token_id: Nat) -> CallResult<(Option<String>,)> {
-    let principal = token_id_to_principal(token_id.0, id);
-    let result: (MotokoResult<Metadata, CommonError>,) =
-        ic_cdk::call(id, "metadata", (principal.to_text(),))
-            .await
-            .unwrap();
-    if let MotokoResult::Ok(metadata) = result.0 {
-        if let Metadata::NonFungible { metadata } = metadata {
-            return Ok((metadata.map(|m| {
-                let url = String::from_utf8(m).unwrap();
-                url
-            }),));
-        }
-    }
-    return Ok((None,));
-}
-
-async fn xpnft_bearer(id: Principal, token_id: Nat) -> String {
-    let result: (MotokoResult<String, CommonError>,) = ic_cdk::call(
-        id,
-        "bearer",
-        (token_id_to_principal(token_id.into(), id).to_text(),),
-    )
-    .await
-    .unwrap();
-    if let (MotokoResult::Ok(account),) = result {
-        account
-    } else {
-        panic!("Failed to get bearer: {:?}", result)
-    }
-}
-
-/// It makes an external call to get the transfer an nft (ext standard) to the given contract.
-async fn dip721_transfer(
-    id: Principal,
-    from: Principal,
-    to: Principal,
-    token_id: Nat,
-) -> CallResult<()> {
-    let principal = token_id_to_principal(token_id.0, id);
-    let (result,): (MotokoResult<Nat, TransferResponseErrors>,) = ic_cdk::call(
-        id,
-        "transfer",
-        (TransferRequest {
-            from: User::Principal(from),
-            to: User::Principal(to),
-            token: principal.to_string(),
-            amount: Nat::from(1),
-            memo: vec![],
-            notify: true,
-            subaccount: Option::None,
-        },),
-    )
-    .await
-    .unwrap();
-    if let MotokoResult::Ok(_) = result {
-        return Ok(());
-    } else {
-        panic!("Failed to transfer: {:?}", result)
-    }
 }
 /// This is the function that is called when the bridge is initialized/contract is deployed.
 /// It sets the group key, chainNonce and the contracts to whitelist NFTs.

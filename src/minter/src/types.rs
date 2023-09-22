@@ -1,73 +1,60 @@
-pub mod motoko_types {
-    use candid::CandidType;
-    use serde::Deserialize;
-    #[derive(Clone, Debug, CandidType, Deserialize)]
-    pub enum MotokoResult<O, E> {
-        #[serde(rename = "ok")]
-        Ok(O),
-        #[serde(rename = "err")]
-        Err(E),
-    }
-}
-
-pub mod ext_types {
-
-    use candid::CandidType;
-    use candid::Nat;
-    use candid::Principal;
+pub mod icrc7 {
+    use candid::{CandidType, Int, Nat, Principal};
     use ic_ledger_types::Subaccount;
-    use serde::Deserialize;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
+    use serde_bytes::ByteBuf;
 
-    #[derive(Clone, Debug, CandidType)]
-    pub struct MintRequest {
-        pub to: User,
-        pub metadata: Option<Vec<u8>>,
-    }
-    #[derive(Clone, Debug, CandidType)]
-    pub struct TransferRequest {
-        pub to: User,
-        pub from: User,
-        pub token: String,
-        pub amount: Nat,
-        pub memo: Vec<u8>,
-        pub notify: bool,
+    // Account representation of ledgers supporting the ICRC1 standard
+    #[derive(Serialize, CandidType, Deserialize, Clone, Debug, Copy)]
+    pub struct Account {
+        pub owner: Principal,
         pub subaccount: Option<Subaccount>,
     }
 
-    #[derive(Clone, Debug, CandidType, Deserialize)]
-    pub enum TransferResponseErrors {
-        Unauthorized(String),
-        InsufficientBalance,
-        Rejected, //Rejected by canister
-        InvalidToken(String),
-        CannotNotify(String),
-        Other(String),
+    #[derive(CandidType, Clone)]
+    pub enum TransferError {
+        Unauthorized { tokens_ids: Vec<u128> },
+        TooOld,
+        CreatedInFuture { ledger_time: u64 },
+        Duplicate { duplicate_of: u128 },
+        TemporaryUnavailable,
+        GenericError { error_code: u128, msg: String },
     }
 
-    #[derive(Clone, Debug, CandidType, Deserialize)]
-    pub enum User {
-        #[serde(rename = "address")]
-        Address(String),
-        #[serde(rename = "principal")]
-        Principal(Principal),
+    #[derive(CandidType, Deserialize)]
+    pub struct TransferArgs {
+        pub spender_subaccount: Option<Subaccount>,
+        pub from: Account,
+        pub to: Account,
+        pub token_ids: Vec<u128>,
+        pub memo: Option<Vec<u8>>,
+        pub created_at_time: Option<u64>,
+        pub is_atomic: Option<bool>,
     }
 
-    #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-    pub enum Metadata {
-        #[serde(rename = "nonfungible")]
-        NonFungible { metadata: Option<Vec<u8>> },
-        #[serde(rename = "fungible")]
-        Fungible {
-            decimals: u8,
-            metadata: Option<Vec<u8>>,
-            name: String,
-            symbol: String,
-        },
+    #[derive(CandidType, Deserialize)]
+    pub struct MintArgs {
+        pub id: u128,
+        pub name: String,
+        pub description: Option<String>,
+        pub image: Option<Vec<u8>>,
+        pub to: Account,
+        pub xp_metadata: Option<String>,
     }
-    #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
-    pub enum CommonError {
-        InvalidToken(String),
-        Other(String),
+    /// Variant type for the `metadata` endpoint values.
+    #[derive(CandidType, Deserialize, Clone, Debug, PartialEq, Eq)]
+    pub enum MetadataValue {
+        Nat(Nat),
+        Int(Int),
+        Text(String),
+        Blob(ByteBuf),
+    }
+
+    pub struct ICRC7Metadata {
+        pub id: u128,
+        pub name: String,
+        pub image: Option<ByteBuf>,
+        pub description: Option<String>,
+        pub xp_metadata: Option<String>,
     }
 }
