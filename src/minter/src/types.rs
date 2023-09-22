@@ -32,7 +32,7 @@ pub mod icrc7 {
         pub is_atomic: Option<bool>,
     }
 
-    #[derive(CandidType, Deserialize)]
+    #[derive(CandidType, Deserialize, Debug, Clone)]
     pub struct MintArgs {
         pub id: u128,
         pub name: String,
@@ -49,7 +49,8 @@ pub mod icrc7 {
         Text(String),
         Blob(ByteBuf),
     }
-
+    /// Variant type for the `metadata` endpoint values.
+    #[derive(CandidType, Deserialize, Clone, Debug, PartialEq, Eq)]
     pub struct ICRC7Metadata {
         pub id: u128,
         pub name: String,

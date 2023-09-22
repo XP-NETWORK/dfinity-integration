@@ -1,16 +1,21 @@
 use candid::{CandidType, Deserialize, Nat, Principal};
 
+use crate::types::icrc7::MintArgs;
+
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateTransferNft {
     pub token_url: String,
     pub mint_with: Principal,
+    pub id: u128,
+    pub mint_args: MintArgs,
     pub to: Principal,
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateTransferNftBatch {
-    pub token_urls: Vec<String>,
     pub mint_with: Vec<Principal>,
+    pub ids: Vec<u128>,
+    pub mint_args: Vec<MintArgs>,
     pub to: Principal,
 }
 
@@ -33,14 +38,14 @@ pub struct ValidateWithdrawFees {
 pub struct ValidateUnfreezeNft {
     pub to: Principal,
     pub dip_contract: Principal,
-    pub token_id: Nat,
+    pub token_id: u128,
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct ValidateUnfreezeNftBatch {
     pub to: Principal,
     pub dip_contracts: Vec<Principal>,
-    pub token_ids: Vec<Nat>,
+    pub token_ids: Vec<u128>,
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]

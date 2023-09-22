@@ -2,6 +2,8 @@ use std::fmt;
 
 use candid::{CandidType, Nat, Principal};
 
+use crate::types::icrc7::ICRC7Metadata;
+
 #[derive(Debug, Clone, CandidType, PartialEq)]
 pub struct BridgeEventCtx {
     pub action_id: Nat,
@@ -12,35 +14,35 @@ pub struct BridgeEventCtx {
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
 pub struct TransferNft {
-    pub token_id: Nat,
-    pub dip721_contract: Principal,
-    pub token_data: String,
+    pub token_id: u128,
+    pub icrc7_contract: Principal,
+    pub token_data: ICRC7Metadata,
     pub mint_with: String,
     pub caller: Principal,
 }
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
 pub struct UnfreezeNft {
-    pub token_id: Nat,
+    pub token_id: u128,
     pub burner: Principal,
-    pub uri: String,
+    pub uri: ICRC7Metadata,
     pub caller: Principal,
 }
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
 pub struct TransferNftBatch {
-    pub token_ids: Vec<Nat>,
+    pub token_ids: Vec<u128>,
     pub dip721_contract: Principal,
-    pub token_datas: Vec<String>,
+    pub token_datas: Vec<ICRC7Metadata>,
     pub mint_with: String,
     pub caller: Principal,
 }
 
 #[derive(Debug, Clone, CandidType, PartialEq)]
 pub struct UnfreezeNftBatch {
-    pub token_ids: Vec<Nat>,
+    pub token_ids: Vec<u128>,
     pub burner: Principal,
-    pub uris: Vec<String>,
+    pub uris: Vec<ICRC7Metadata>,
     pub caller: Principal,
 }
 
@@ -71,20 +73,20 @@ impl fmt::Display for KeyType {
 pub enum ValidatedEvent {
     ValidatedMint {
         mint_with: Principal,
-        token_id: u32,
+        token_id: u128,
     },
     ValidatedUnfreeze {
         contract: Principal,
-        token_id: Nat,
+        token_id: u128,
         to: Principal,
     },
     ValidatedMintBatch {
         mint_with: Vec<Principal>,
-        token_ids: Vec<u32>,
+        token_ids: Vec<u128>,
     },
     ValidatedUnfreezeBatch {
         contracts: Vec<Principal>,
-        token_ids: Vec<Nat>,
+        token_ids: Vec<u128>,
         to: Principal,
     },
     ValidatedPause {

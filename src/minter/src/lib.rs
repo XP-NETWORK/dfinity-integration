@@ -12,10 +12,8 @@ use candid::Encode;
 use candid::Nat;
 use candid::Principal;
 use events::*;
-use ic_cdk::api::call::CallResult;
 use ic_cdk::api::call::RejectionCode;
 use ic_ledger_types::{account_balance, query_blocks, transfer, GetBlocksArgs, Operation};
-use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 use serde::Serialize;
 use serde_big_array::BigArray;
@@ -450,10 +448,12 @@ pub(crate) async fn validate_transfer_nft(
     )
     .unwrap();
     ic_cdk::println!("Sig Verified");
-    let mint = xpnft_mint(action.mint_with, action.clone().token_url, action.to)
-        .await
-        .unwrap()
-        .0;
+    let mint = xpnft::mint(
+        action.mint_with,
+        action.clone().id,
+        action.clone().mint_args,
+    )
+    .await;
     ic_cdk::println!("Minted {mint}");
     VALIDATED_EVENT_STORE.with(|store| {
         let mut st = store.borrow_mut();
@@ -461,7 +461,7 @@ pub(crate) async fn validate_transfer_nft(
             action_id.clone(),
             ValidatedEvent::ValidatedMint {
                 mint_with: action.mint_with,
-                token_id: mint,
+                token_id: action.id,
             },
         )
     });
@@ -485,14 +485,13 @@ pub(crate) async fn validate_unfreeze_nft(
     )
     .unwrap();
 
-    dip721_transfer(
+    xpnft::transfer(
         action.dip_contract,
         ic_cdk::id(),
         action.clone().to,
         action.clone().token_id,
     )
-    .await
-    .unwrap();
+    .await;
     VALIDATED_EVENT_STORE.with(|store| {
         let mut st = store.borrow_mut();
         st.insert(
@@ -523,13 +522,10 @@ pub(crate) async fn validate_transfer_nft_batch(
     )
     .unwrap();
 
-    assert_eq!(action.mint_with.len(), action.token_urls.len());
-    let mut token_ids = vec![];
-    for (i, token_url) in action.clone().token_urls.into_iter().enumerate() {
-        let (token_id,) = xpnft_mint(action.mint_with[i], token_url, action.to)
-            .await
-            .unwrap();
-        token_ids.push(token_id)
+    assert_eq!(action.mint_with.len(), action.mint_args.len());
+
+    for (i, mint_arg) in action.clone().mint_args.into_iter().enumerate() {
+        let _tx_id = xpnft::mint(action.mint_with[i], action.ids[i], mint_arg).await;
     }
     VALIDATED_EVENT_STORE.with(|store| {
         let mut st = store.borrow_mut();
@@ -537,7 +533,7 @@ pub(crate) async fn validate_transfer_nft_batch(
             action_id.clone(),
             ValidatedEvent::ValidatedMintBatch {
                 mint_with: action.mint_with,
-                token_ids,
+                token_ids: action.ids,
             },
         )
     });
@@ -565,9 +561,7 @@ pub(crate) async fn validate_unfreeze_nft_batch(
     assert_eq!(action.token_ids.len(), action.dip_contracts.len());
 
     for (i, token_id) in action.clone().token_ids.into_iter().enumerate() {
-        dip721_transfer(action.dip_contracts[i], canister_id, action.to, token_id)
-            .await
-            .unwrap();
+        xpnft::transfer(action.dip_contracts[i], canister_id, action.to, token_id).await;
     }
     VALIDATED_EVENT_STORE.with(|store| {
         let mut st = store.borrow_mut();
@@ -588,15 +582,15 @@ pub(crate) async fn validate_unfreeze_nft_batch(
 #[candid_method(update)]
 pub(crate) async fn freeze_nft(
     tx_fee_block: BlockIndex,
-    dip721_contract: Principal,
-    token_id: Nat,
+    icrc7_contract: Principal,
+    token_id: u128,
     chain_nonce: u64,
     to: String,
     mint_with: String,
     sig: Sig,
 ) -> Nat {
     require_unpause().unwrap();
-    require_whitelist(dip721_contract).unwrap();
+    require_whitelist(icrc7_contract).unwrap();
 
     let caller = ic_cdk::caller();
     let canister_id = ic_cdk::id();
@@ -615,19 +609,13 @@ pub(crate) async fn freeze_nft(
         sig,
     );
 
-    dip721_transfer(dip721_contract, caller, canister_id, token_id.clone())
-        .await
-        .unwrap();
-    let url = dip721_token_uri(dip721_contract, token_id.clone())
-        .await
-        .unwrap()
-        .0
-        .unwrap_or_default();
+    let _ = xpnft::transfer(icrc7_contract, caller, canister_id, token_id.clone()).await;
+    let url = xpnft::metadata(icrc7_contract, token_id.clone()).await;
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
     let ev = BridgeEvent::TransferNft(TransferNft {
         token_id,
-        dip721_contract,
+        icrc7_contract,
         token_data: url,
         mint_with,
         caller,
@@ -642,7 +630,7 @@ pub(crate) async fn freeze_nft(
 pub(crate) async fn freeze_nft_batch(
     tx_fee_block: BlockIndex,
     dip721_contract: Principal,
-    token_ids: Vec<Nat>,
+    token_ids: Vec<u128>,
     chain_nonce: u64,
     to: String,
     mint_with: String,
@@ -671,16 +659,8 @@ pub(crate) async fn freeze_nft_batch(
 
     let mut urls = Vec::with_capacity(token_ids.len());
     for token_id in token_ids.clone() {
-        urls.push(
-            dip721_token_uri(dip721_contract, token_id.clone())
-                .await
-                .unwrap()
-                .0
-                .unwrap(),
-        );
-        dip721_transfer(dip721_contract, caller, canister_id, token_id)
-            .await
-            .unwrap();
+        urls.push(xpnft::metadata(dip721_contract, token_id.clone()).await);
+        xpnft::transfer(dip721_contract, caller, canister_id, token_id).await;
     }
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
@@ -702,18 +682,13 @@ pub(crate) async fn freeze_nft_batch(
 pub(crate) async fn withdraw_nft(
     tx_fee_block: BlockIndex,
     burner: Principal,
-    token_id: Nat,
+    token_id: u128,
     chain_nonce: u64,
     to: String,
     sig: Sig,
 ) -> Nat {
     require_unpause().unwrap();
     let caller = ic_cdk::caller();
-    let calleraid = AccountIdentifier::new(&caller, &DEFAULT_SUBACCOUNT).to_string();
-
-    let bearer = xpnft_bearer(burner, token_id.clone()).await;
-
-    assert!(bearer == calleraid, "Token owner is not the caller");
 
     let canister_id = ic_cdk::id();
     let fee = require_tx_fee(&canister_id, &caller, tx_fee_block)
@@ -731,15 +706,9 @@ pub(crate) async fn withdraw_nft(
         sig,
     );
 
-    let url = dip721_token_uri(burner, token_id.clone())
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    let url = xpnft::metadata(burner, token_id.clone()).await;
 
-    xpnft_burn_for(burner, token_id.clone().0.to_u32().unwrap())
-        .await
-        .unwrap();
+    xpnft::burn(burner, token_id).await;
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
     let ev = BridgeEvent::UnfreezeNft(UnfreezeNft {
@@ -758,7 +727,7 @@ pub(crate) async fn withdraw_nft(
 pub(crate) async fn withdraw_nft_batch(
     tx_fee_block: BlockIndex,
     burner: Principal,
-    token_ids: Vec<Nat>,
+    token_ids: Vec<u128>,
     chain_nonce: u64,
     to: String,
     sig: Sig,
@@ -786,21 +755,8 @@ pub(crate) async fn withdraw_nft_batch(
     let mut urls = Vec::with_capacity(token_ids.len());
 
     for token_id in token_ids.clone() {
-        let calleraid = AccountIdentifier::new(&caller, &DEFAULT_SUBACCOUNT).to_string();
-        let bearer = xpnft_bearer(burner, token_id.clone()).await;
-
-        assert!(bearer == calleraid, "Token owner is not the caller");
-
-        urls.push(
-            dip721_token_uri(burner, token_id.clone())
-                .await
-                .unwrap()
-                .0
-                .unwrap(),
-        );
-        xpnft_burn_for(burner, token_id.0.to_u32().unwrap())
-            .await
-            .unwrap();
+        urls.push(xpnft::metadata(burner, token_id.clone()).await);
+        xpnft::burn(burner, token_id).await;
     }
 
     let ctx = BridgeEventCtx::new(fee, chain_nonce, to);
