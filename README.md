@@ -49,3 +49,8 @@ Scheme: `dfx deploy xpnft --network ic --argument '(bridge_address)'`
 ```shell
 ie dfx deploy xpnft --network ic --argument '("53bb2-rqaaa-aaaap-aa3vq-cai")'
 ```
+5. Deploy creator
+
+```bash
+dfx deploy creator --argument '(vec {principal "64sr6-x7vyc-6aa3t-5mma6-fkafb-6fubt-qr6da-kehuw-3bxem-htw7c-gqe" ; })' --network ic --identity dima
+```
